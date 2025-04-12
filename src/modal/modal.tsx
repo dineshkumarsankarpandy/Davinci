@@ -1,4 +1,11 @@
 import React from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose
+} from '@/components/ui/dialog';
 import { X } from 'lucide-react';
 
 interface ModalProps { 
@@ -6,32 +13,37 @@ interface ModalProps {
   onClose: () => void; 
   children: React.ReactNode; 
   maxWidth?: string; 
+  isOpen: boolean; // Added isOpen prop to control dialog state
 }
 
-const Modal: React.FC<ModalProps> = ({ title, onClose, children, maxWidth = 'max-w-md' }) => (
-  <div 
-    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1050] flex items-center justify-center p-4" 
-    onClick={onClose} 
-    aria-modal="true" 
-    role="dialog"
-  >
-    <div 
-      className={`bg-white rounded-lg shadow-xl w-full ${maxWidth} overflow-hidden`} 
-      onClick={(e) => e.stopPropagation()}
+const Modal: React.FC<ModalProps> = ({ 
+  title, 
+  onClose, 
+  children, 
+  maxWidth = 'max-w-md',
+  isOpen 
+}) => (
+  <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <DialogContent 
+      className={`${maxWidth}`} 
+      onInteractOutside={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
     >
-      <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
-        <button 
-          onClick={onClose} 
-          className="text-gray-400 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100" 
-          aria-label="Close"
-        >
-          <X size={20} />
-        </button>
-      </div>
-      <div className="p-6">{children}</div>
-    </div>
-  </div>
+      <DialogHeader className="border-b pb-2">
+        <div className="flex items-center justify-between">
+          <DialogTitle className="text-lg font-semibold text-gray-800">{title}</DialogTitle>
+          <DialogClose className="text-gray-400 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100" asChild>
+            <button aria-label="Close">
+              <X size={20} />
+            </button>
+          </DialogClose>
+        </div>
+      </DialogHeader>
+      <div className="p-2">{children}</div>
+    </DialogContent>
+  </Dialog>
 );
 
 export default Modal;

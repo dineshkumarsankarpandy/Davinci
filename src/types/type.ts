@@ -40,3 +40,13 @@ export interface SectionInfo {
   tagName: string; 
   outerHTML: string;
 }
+
+export interface RequestImagePayload {
+  prompt: string;
+  base64Str: string;
+}
+
+export interface GenerateResponse {
+  html: string;
+}
+

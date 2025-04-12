@@ -539,10 +539,20 @@ const CanvasApp: React.FC = () => {
       <main className="flex-grow relative overflow-hidden">
         <ReactInfiniteCanvas
           ref={canvasRef}
-          minZoom={0.35} maxZoom={4}
+          minZoom={0.3} maxZoom={4}
+          scrollBarConfig={{
+            renderScrollBar: true,
+            startingPosition: { x: 0, y: 0 },
+            offset: { x: 0, y: 0 },
+            color: "grey",
+            thickness: "8px",
+            minSize: "15px",
+          }}
           panOnScroll
+          
           className="w-full h-full cursor-grab active:cursor-grabbing bg-dots"
           onZoom={handleCanvasZoom}
+          backgroundConfig={{backgroundColor:'lightgrey'}}
         // No 'elements' prop needed
         >
           <div className="canvas-content" ref={canvasContentRef} style={{ position: 'relative' }}>

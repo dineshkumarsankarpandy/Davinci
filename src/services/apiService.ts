@@ -1,3 +1,4 @@
+import { GenerateResponse,RequestImagePayload } from "@/types/type";
 const API_BASE_URL = "http://localhost:8000";
 
 const ApiService = {
@@ -96,6 +97,24 @@ const ApiService = {
       throw new Error("Failed to parse page names received from API.");
     }
   },
+  
+
+  generateHtmlFromImage: async (prompt: string, base64Str: string): Promise<GenerateResponse> => {
+    const payload: RequestImagePayload = { prompt, base64Str };
+    const response = await fetch(`${API_BASE_URL}/api/generate-html-from-image`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const e = await response.text();
+      throw new Error(`Image Gen HTTP ${response.status}: ${e}`);
+    }
+
+    return await response.json();
+  },
+
 };
 
 export default ApiService;

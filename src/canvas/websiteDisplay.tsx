@@ -20,9 +20,7 @@ interface WebsiteDisplayProps {
     relativePosition?: { x: number; y: number };
 }
 
-// Define default width used if not provided
 const DEFAULT_WEBSITE_WIDTH = 1440;
-
 const WebsiteDisplay: React.FC<WebsiteDisplayProps> = ({
     website,
     isActive,
@@ -51,7 +49,6 @@ const WebsiteDisplay: React.FC<WebsiteDisplayProps> = ({
         onActivate(website.id);
     };
 
-    // --- Determine Indicators ---
     const versionNumberMatch = website.title.match(/\(v(\d+)\)$/);
     const versionNumber = versionNumberMatch ? parseInt(versionNumberMatch[1], 10) : null;
 
@@ -67,7 +64,6 @@ const WebsiteDisplay: React.FC<WebsiteDisplayProps> = ({
         </span>
     ) : null;
 
-    // *** Use isInGroup EXPLICITLY to decide positioning ***
     const positionLeft = isInGroup && relativePosition ? relativePosition.x : website.position.x;
     const positionTop = isInGroup && relativePosition ? relativePosition.y : website.position.y;
 
@@ -119,5 +115,4 @@ const WebsiteDisplay: React.FC<WebsiteDisplayProps> = ({
         </div>
     );
 };
-
 export default WebsiteDisplay;

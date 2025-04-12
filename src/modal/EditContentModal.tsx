@@ -1,7 +1,16 @@
 import React from 'react';
 import { Loader2, Pencil } from 'lucide-react';
-import Modal from './modal';
 import { ContentHighlightInfo } from '../useContentHighlights';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+  DialogFooter
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 interface EditContentModalProps {
   isOpen: boolean;
@@ -25,25 +34,37 @@ const EditContentModal: React.FC<EditContentModalProps> = ({
   if (!isOpen || contentInfo?.tagName === 'img') return null;
 
   return (
-    <Modal title={`Edit Content (<${contentInfo?.tagName}>)`} onClose={onClose}>
-      <p className="text-sm text-gray-600 mb-3">Modify text:</p>
-      <textarea 
-        value={editContentValue} 
-        onChange={(e) => setEditContentValue(e.target.value)} 
-        className="w-full p-2 border rounded mb-4 text-sm min-h-[100px]" 
-      />
-      <button 
-        onClick={() => onSubmit(editContentValue)} 
-        disabled={isLoading} 
-        className="w-full bg-emerald-600 text-white py-2 px-4 rounded hover:bg-emerald-700 text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center"
-      >
-        {isLoading ? 
-          <Loader2 size={16} className="animate-spin mr-2" /> : 
-          <Pencil size={14} className="mr-2" />
-        }
-        Save Changes
-      </button>
-    </Modal>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{`Edit Content (<${contentInfo?.tagName}>)`}</DialogTitle>
+          <DialogClose />
+        </DialogHeader>
+        
+        <div className="py-2">
+          <p className="text-sm text-gray-600 mb-3">Modify text:</p>
+          <Textarea 
+            value={editContentValue} 
+            onChange={(e) => setEditContentValue(e.target.value)} 
+            className="min-h-[100px]"
+          />
+        </div>
+        
+        <DialogFooter>
+          <Button
+            onClick={() => onSubmit(editContentValue)}
+            disabled={isLoading}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            {isLoading ? 
+              <Loader2 size={16} className="mr-2 animate-spin" /> : 
+              <Pencil size={14} className="mr-2" />
+            }
+            Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
