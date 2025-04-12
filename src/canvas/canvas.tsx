@@ -50,12 +50,12 @@ const CanvasApp: React.FC = () => {
   });
   const [editContentValue, setEditContentValue] = useState('');
 
-  // --- Helper Functions ---
-  const fitContent = useCallback(( duration = 500, ) => {
-    setTimeout(() => {
-      canvasRef.current?.fitContentToView({  duration});
-    }, 300);
-  }, []);
+  // // --- Helper Functions ---
+  // const fitContent = useCallback(( duration = 500, ) => {
+  //   setTimeout(() => {
+  //     canvasRef.current?.fitContentToView({  duration});
+  //   }, 300);
+  // }, []);
 
   const groupedWebsites = useCallback(() => {
     const explicitGroups: Record<string, WebsiteData[]> = {};
@@ -229,7 +229,7 @@ const CanvasApp: React.FC = () => {
         setActiveGroupId(newGroupId);
         console.log("Multi-page group generated:", newGroupId, newWebsites.map(w => w.id));
       }
-      fitContent();
+      // fitContent();
     } catch (err: any) {
       console.error("Generation Error:", err);
       setError(err.message || 'Error generating website(s).');
@@ -297,7 +297,6 @@ const CanvasApp: React.FC = () => {
       setActiveGroupId(groupId);
       setActiveWebsiteId(null);
       setTimeout(() => {
-        // Use fitContentToView with target selector
         canvasRef.current?.fitContentToView({  duration: 400 });
       }, 150);
     }
@@ -551,7 +550,7 @@ const CanvasApp: React.FC = () => {
           panOnScroll
           
           className="w-full h-full cursor-grab active:cursor-grabbing bg-dots"
-          onZoom={handleCanvasZoom}
+          // onZoom={handleCanvasZoom}
           backgroundConfig={{backgroundColor:'lightgrey'}}
         // No 'elements' prop needed
         >
@@ -569,9 +568,8 @@ const CanvasApp: React.FC = () => {
                 onContentAction={handleContentActionRequest}
                 canvasTransform={canvasTransform}
                 canvasContentRef={canvasContentRef}
-                isInGroup={false} // Mark as not in a group container
+                isInGroup={false}
                 onWebsiteSizeChange={handleWebsiteSizeChange}
-              // No relativePosition needed here
               />
             ))}
 
@@ -579,7 +577,7 @@ const CanvasApp: React.FC = () => {
             {Object.entries(grouped).map(([groupId, websitesInGroup]) => (
               <WebsiteGroup
                 key={groupId}
-                groupId={groupId} // This ID is used for fitContentToView target
+                groupId={groupId} 
                 websites={websitesInGroup}
                 activeWebsiteId={activeWebsiteId}
                 onActivateWebsite={handleSetActiveWebsite}

@@ -115,6 +115,22 @@ const ApiService = {
     return await response.json();
   },
 
-};
+  enhancedPrompt: async (prompt:string) =>{
+    const payload ={
+      prompt
+    }
 
+    const response = await fetch(`${API_BASE_URL}/api/enhance-prompt`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+    });
+    if(!response.ok) {
+      const err = await response.text()
+      throw new Error(`Error during enhancing the prompt: ${err} `);
+    }
+    return await response.json()
+  }
+
+};
 export default ApiService;

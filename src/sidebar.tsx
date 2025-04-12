@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { Send, AlertTriangle, Loader2, Plus, X, Sparkles, Trash2, Image as ImageIcon, WandSparkles } from 'lucide-react';
 import ApiService from './services/apiService';
+import { getErrorMessage } from './lib/errorHandling';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -26,10 +27,10 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
     const [newPageName, setNewPageName] = useState<string>('');
     const [isAutoFlowLoading, setIsAutoFlowLoading] = useState<boolean>(false);
     const [flowError, setFlowError] = useState<string | null>(null);
+    const [isPromptEnhancerLoading, setIsPromptEnhancerLoading] = useState<boolean>(false);
+    const [enhanceError, setEnhanceError] = useState<string| null>(null);
 
-    // For image upload preview (Data URL)
     const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
-    // For sending to backend (Base64 string only)
     const [referenceImageBase64, setReferenceImageBase64] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -37,13 +38,13 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
         e.preventDefault();
         if (prompt.trim() && !isLoading) {
             setFlowError(null);
-            // Pass prompt, pages, and the base64 image string (or null)
             onGenerate(prompt, pages, referenceImageBase64);
         }
     };
 
-    // --- (Keep handleAddPage, handleRemovePage, handleAutoFlow as they are) ---
-     const handleAddPage = () => {
+
+
+    const handleAddPage = () => {
         if (newPageName.trim()) {
             setPages(prevPages => [...prevPages, newPageName.trim()]);
             setNewPageName('');
@@ -64,7 +65,6 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
         setFlowError(null);
 
         try {
-            // Ensure generateFlow is correctly typed in ApiService if not already
             const suggestedPages = await ApiService.generateFlow(prompt);
             setPages(suggestedPages);
         } catch (err: any) {
@@ -75,6 +75,38 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
             setIsAutoFlowLoading(false);
         }
     };
+
+   // Enhance the prompt
+
+   const handleEnhancePrompt = async() =>{
+    if(!prompt.trim()){
+        setEnhanceError('Pleace enter the prompt to enhance');
+        return;
+    }
+    setIsPromptEnhancerLoading(true);
+    setEnhanceError(null);
+
+    try{
+        const response = await ApiService.enhancedPrompt(prompt);
+        
+        if (response && response.enhanced_prompt) {
+            setPrompt(response.enhanced_prompt);
+        } else {
+            throw new Error("Enhanced prompt not found in response.");
+        }
+    }
+    catch(err){
+        throw new Error(getErrorMessage(err));
+
+    }
+    finally{
+        setIsPromptEnhancerLoading(false)
+    }
+   }
+
+
+
+
     // --- Image Handlers ---
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -88,7 +120,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                 // Format is "data:[mime/type];base64,[actual_base64_string]"
                 const base64String = result.split(',')[1];
                 if (base64String) {
-                   setReferenceImageBase64(base64String);
+                    setReferenceImageBase64(base64String);
                 } else {
                     console.error("Could not extract base64 string from image data.");
                     setReferenceImageBase64(null); // Clear if extraction fails
@@ -123,8 +155,8 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
         <div className="h-screen flex">
             {/* Navbar */}
             <nav className="w-16 bg-gray-800 flex flex-col items-center py-4 shadow-lg z-20 shrink-0">
-                 {/* ... (Navbar content unchanged) ... */}
-                 <div className="text-white mb-6">
+                {/* ... (Navbar content unchanged) ... */}
+                <div className="text-white mb-6">
                     <h1 className="text-lg font-semibold">SDK</h1>
                 </div>
                 <Button
@@ -157,45 +189,64 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                     <ScrollArea className="flex-grow">
                         <CardContent className="p-4 space-y-6">
                             <form onSubmit={handleMainSubmit} className="space-y-4">
-                            <div className="space-y-2">
+                                <div className="space-y-2">
                                     <Label htmlFor="prompt">Context</Label>
                                     <div className="relative">
-                                        <Textarea
-                                            id="prompt"
-                                            value={prompt}
-                                            onChange={(e) => setPrompt(e.target.value)}
-                                            placeholder="Describe the design or provide context..."
-                                            className="min-h-24 resize-none pr-10"
-                                            disabled={isLoading}
-                                        />
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="absolute bottom-2 left-2 h-8 w-8 opacity-70 hover:opacity-100 bg-white border shadow-sm"
-                                            onClick={triggerImageUpload}
-                                            title={referenceImageBase64 ? 'Change reference image' : 'Add reference image'}
-                                        >
-                                            <ImageIcon size={16} />
-                                        </Button>
-                                        <input
-                                            type="file"
-                                            ref={fileInputRef}
-                                            accept="image/png, image/jpeg, image/webp"
-                                            onChange={handleImageUpload}
-                                            className="hidden"
-                                        />
-
-                                        <Button
-                                                type='button'
+                                    <Textarea
+                               id="prompt"
+                                value={prompt}
+                                onChange={(e) => setPrompt(e.target.value)}
+                                placeholder="Describe the design or provide context..."
+                                className="min-h-24 h-24 max-h-24 resize-none pr-10 overflow-y-auto"
+                                disabled={isLoading}
+                                />
+                                        <div className="absolute bottom-2 left-2 flex space-x-2">
+                                            <Button
+                                                type="button"
                                                 variant="outline"
-                                                className='absolute bottom-2 right-2 h-6 w-20 hover:opacity-100'
+                                                size="icon"
+                                                className="h-8 w-8 opacity-70 hover:opacity-100 bg-white  shadow-sm"
+                                                onClick={triggerImageUpload}
+                                                title={referenceImageBase64 ? 'Change reference image' : 'Add reference image'}
+                                            >
+                                                <ImageIcon size={16} />
+                                            </Button>
+                                            <input
+                                                type="file"
+                                                ref={fileInputRef}
+                                                accept="image/png, image/jpeg, image/webp"
+                                                onChange={handleImageUpload}
+                                                className="hidden"
+                                            />
+                                        </div>
+
+                                        <Button
+                                            title='click and enhance your prompt..'
+                                            type='button'
+                                            variant="outline"
+                                            onClick={handleEnhancePrompt}
+                                            className='absolute bottom-2 right-2 h-8 w-auto px-3 hover:opacity-100 flex items-center cursor-pointer gap-1 text-purple-600 hover:text-purple-700'
                                         >
-                                            <p>enhance</p> <WandSparkles size={10}/>
-
-
+                                           {isPromptEnhancerLoading ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    
+                                                </>
+                                            ) : (
+                                                <>
+                                                    
+                                                    <WandSparkles size={16} />
+                                                </>
+                                            )}
+                                            
                                         </Button>
                                     </div>
+                                    {enhanceError && (
+                                        <Alert variant="destructive" className="py-2 mt-2">
+                                            <AlertTriangle className="h-4 w-4" />
+                                            <AlertDescription className="text-xs ml-2">{enhanceError}</AlertDescription>
+                                        </Alert>
+                                    )}
 
                                     {/* Display uploaded image preview */}
                                     {referenceImagePreview && (
@@ -217,7 +268,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                                         </div>
                                     )}
                                     {/* Indicate if image is primary mode */}
-                                     {isImageGenerationMode && (
+                                    {isImageGenerationMode && (
                                         <Badge variant="secondary" className="mt-1 w-full justify-center py-1">
                                             Generating based on image + prompt
                                         </Badge>
@@ -229,9 +280,9 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                                 {/* Design Flow Section - Disable if image is selected? */}
                                 <div className={`space-y-3 ${referenceImageBase64 ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                     <Label>Design Flow (Optional)</Label>
-                                     {referenceImageBase64 && (
-                                         <p className="text-xs text-orange-600">Flow generation is disabled when a reference image is used (image generation creates a single page).</p>
-                                     )}
+                                    {referenceImageBase64 && (
+                                        <p className="text-xs text-orange-600">Flow generation is disabled when a reference image is used (image generation creates a single page).</p>
+                                    )}
                                     <div className="flex gap-2">
                                         <Input
                                             type="text"
@@ -260,7 +311,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                                         variant="outline"
                                         className="w-full"
                                     >
-                                       {isAutoFlowLoading ? (
+                                        {isAutoFlowLoading ? (
                                             <>
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                                 <span>Generating Flow...</span>
@@ -284,8 +335,8 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                                         <div className="space-y-2">
                                             <Label className="text-xs">Added Pages:</Label>
                                             <ScrollArea className="h-40 border rounded-md">
-                                                 {/* ... (Page list unchanged) ... */}
-                                                 <ul className="divide-y divide-gray-100">
+                                                {/* ... (Page list unchanged) ... */}
+                                                <ul className="divide-y divide-gray-100">
                                                     {pages.map((page, index) => (
                                                         <li key={`${page}-${index}`} className="flex items-center justify-between p-2 text-sm">
                                                             <Badge variant="outline" className="px-2 py-1 font-normal break-all text-left">
@@ -314,9 +365,8 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                                 <Button
                                     type="submit"
                                     disabled={isLoading || !prompt.trim()}
-                                    className="w-full"
+                                    className="w-full bg-purple-700"
                                 >
-                                    {/* ... (Submit button content unchanged) ... */}
                                     {isLoading ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -325,7 +375,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                                     ) : (
                                         <>
                                             <Send size={16} className="mr-2" />
-                                             <span>{isImageGenerationMode ? 'Generate from Image' : (pages.length > 0 ? 'Generate Flow' : 'Generate Page')}</span>
+                                            <span>{isImageGenerationMode ? 'Generate from Image' : (pages.length > 0 ? 'Generate Flow' : 'Generate Design')}</span>
                                         </>
                                     )}
                                 </Button>
@@ -340,7 +390,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                         </CardContent>
                     </ScrollArea>
 
-                   <CardFooter className="p-4 bg-gray-50 border-t">
+                    <CardFooter className="p-4 bg-gray-50 border-t">
                         {/* ... (Card Footer unchanged) ... */}
                         <div className="w-full">
                             <h3 className="text-sm font-medium text-gray-700 mb-2">Tips</h3>
