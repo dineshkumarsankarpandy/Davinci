@@ -5,6 +5,7 @@ import useSectionHighlight from './useSectionHighlight'; // Adjust path
 import useContentHighlight, { ContentHighlightInfo, ContentActionType } from './useContentHighlights'; 
 import { createPortal } from 'react-dom';
 import { SectionInfo } from './types/type';
+import FontSelector from './fontSelector'; // Import the new FontSelector component
 
 interface CanvasTransformState { k: number; x: number; y: number; }
 
@@ -26,7 +27,7 @@ interface WireframeRendererProps {
 const DEFAULT_WIDTH = 1440;
 const MIN_HEIGHT = 300;
 const FONT_LINK_ID = 'custom-font-link';
-const availableFonts = ['Roboto', 'Open Sans', 'Lato', 'Montserrat','Winky Rough','Bungee Spice'];
+const availableFonts = ['Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Winky Rough', 'Bungee Spice', 'Amarante', 'Amaranth', 'Amatic SC', 'Amiko', 'Amiri', 'Amita', 'Anaheim', 'Andada Pro'];
 
 const ToolbarButton: React.FC<{
     icon: React.ElementType, label?: string, tooltip: string, onClick?: () => void, className?: string, active?: boolean
@@ -129,6 +130,11 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
             }
         }
     }, [selectedFont]);
+
+    // --- Handle Font Change ---
+    const handleFontChange = (font: string | null) => {
+        setSelectedFont(font);
+    };
 
     // --- Effects ---
     // Iframe load and style injection effect
@@ -270,19 +276,14 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                         <ToolbarButton icon={Target} label="Section" tooltip={currentMode === 'section' ? "Disable Section Actions" : "Enable Section Actions"} onClick={() => toggleMode('section')} active={currentMode === 'section'} />
                         <ToolbarButton icon={Edit3} label="Content" tooltip={currentMode === 'content' ? "Disable Content Actions" : "Enable Content Actions"} onClick={() => toggleMode('content')} active={currentMode === 'content'} />
-                        {/* Font Selection Dropdown */}
-                        <div className="relative">
-                            <select
-                                value={selectedFont || ''}
-                                onChange={(e) => setSelectedFont(e.target.value || null)}
-                                className="appearance-none bg-white border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            >
-                                <option value="">Default Font</option>
-                                {availableFonts.map(font => (
-                                    <option key={font} value={font}>{font}</option>
-                                ))}
-                            </select>
-                        </div>
+                        
+                        {/* Replace dropdown with FontSelector component */}
+                        <FontSelector 
+                            selectedFont={selectedFont}
+                            onFontChange={handleFontChange}
+                            availableFonts={availableFonts}
+                        />
+                        
                         <div className="w-px h-5 bg-gray-300 mx-1"></div>
                         <ToolbarButton icon={ArrowLeftRight} tooltip={`Resize (${iframeWidth === DEFAULT_WIDTH ? 'Mobile' : 'Desktop'})`} onClick={handleResizeToggle} />
                         {onDelete && <ToolbarButton icon={Trash2} tooltip="Delete Wireframe" onClick={onDelete} className="hover:bg-red-100 hover:text-red-700 hover:border-red-300" />}

@@ -1,6 +1,6 @@
-// src/components/sidebar.tsx (or wherever SideNavbar is defined)
+// src/components/sidebar.tsx
 import React, { useState, useRef } from 'react';
-import { Send, AlertTriangle, Loader2, Plus, X, Sparkles, Trash2, Image as ImageIcon, WandSparkles } from 'lucide-react';
+import { Send, AlertTriangle, Loader2, Plus, X, Sparkles, Trash2, Image as ImageIcon, WandSparkles, Expand } from 'lucide-react';
 import ApiService from './services/apiService';
 import { getErrorMessage } from './lib/errorHandling';
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,9 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import MarkdownEditorDialog from './promptMarkdownDialog'; 
 
 interface SideNavbarProps {
-    // Update the signature to include optional base64Image
     onGenerate: (prompt: string, pages: string[], base64Image?: string | null) => Promise<void>;
     isLoading: boolean;
     error: string | null;
@@ -29,10 +29,13 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
     const [flowError, setFlowError] = useState<string | null>(null);
     const [isPromptEnhancerLoading, setIsPromptEnhancerLoading] = useState<boolean>(false);
     const [enhanceError, setEnhanceError] = useState<string| null>(null);
-
+    const [expandedTextarea, setExpandedTextarea] = useState<boolean>(false);
     const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
     const [referenceImageBase64, setReferenceImageBase64] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    // Add state for the markdown editor dialog
+    const [isMarkdownDialogOpen, setIsMarkdownDialogOpen] = useState<boolean>(false);
 
     const handleMainSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -42,7 +45,15 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
         }
     };
 
+    const toggleTextareaExpand = () => {
+        // Instead of expanding the textarea, open the markdown dialog
+        setIsMarkdownDialogOpen(true);
+    };
 
+    // Handle saving the markdown content from the dialog
+    const handleSaveMarkdown = (newContent: string) => {
+        setPrompt(newContent);
+    };
 
     const handleAddPage = () => {
         if (newPageName.trim()) {
@@ -77,7 +88,6 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
     };
 
    // Enhance the prompt
-
    const handleEnhancePrompt = async() =>{
     if(!prompt.trim()){
         setEnhanceError('Pleace enter the prompt to enhance');
@@ -103,9 +113,6 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
         setIsPromptEnhancerLoading(false)
     }
    }
-
-
-
 
     // --- Image Handlers ---
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,20 +199,29 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                                 <div className="space-y-2">
                                     <Label htmlFor="prompt">Context</Label>
                                     <div className="relative">
-                                    <Textarea
-                               id="prompt"
-                                value={prompt}
-                                onChange={(e) => setPrompt(e.target.value)}
-                                placeholder="Describe the design or provide context..."
-                                className="min-h-24 h-24 max-h-24 resize-none pr-10 overflow-y-auto"
-                                disabled={isLoading}
-                                />
+                                        <Textarea
+                                            id="prompt"
+                                            value={prompt}
+                                            onChange={(e) => setPrompt(e.target.value)}
+                                            placeholder="Describe the design or provide context..."
+                                            className={`resize-none pr-10 overflow-y-auto ${expandedTextarea ? 'min-h-48 h-48' : 'min-h-32 h-32'}`}
+                                            disabled={isLoading}
+                                        />
+                                        <Button
+                                            title='Open advanced editor'
+                                            type='button'
+                                            variant="ghost"
+                                            onClick={toggleTextareaExpand}
+                                            className='absolute top-2 right-2 h-6 w-6 p-0'
+                                        >
+                                            <Expand size={16} />
+                                        </Button>
                                         <div className="absolute bottom-2 left-2 flex space-x-2">
                                             <Button
                                                 type="button"
                                                 variant="outline"
                                                 size="icon"
-                                                className="h-8 w-8 opacity-70 hover:opacity-100 bg-white  shadow-sm"
+                                                className="h-8 w-8 opacity-70 hover:opacity-100 bg-white shadow-sm"
                                                 onClick={triggerImageUpload}
                                                 title={referenceImageBase64 ? 'Change reference image' : 'Add reference image'}
                                             >
@@ -227,18 +243,11 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                                             onClick={handleEnhancePrompt}
                                             className='absolute bottom-2 right-2 h-8 w-auto px-3 hover:opacity-100 flex items-center cursor-pointer gap-1 text-purple-600 hover:text-purple-700'
                                         >
-                                           {isPromptEnhancerLoading ? (
-                                                <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    
-                                                </>
+                                            {isPromptEnhancerLoading ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
                                             ) : (
-                                                <>
-                                                    
-                                                    <WandSparkles size={16} />
-                                                </>
+                                                <WandSparkles size={16} />
                                             )}
-                                            
                                         </Button>
                                     </div>
                                     {enhanceError && (
@@ -404,6 +413,14 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                     </CardFooter>
                 </Card>
             )}
+            
+            {/* Markdown Editor Dialog */}
+            <MarkdownEditorDialog
+                isOpen={isMarkdownDialogOpen}
+                onClose={() => setIsMarkdownDialogOpen(false)}
+                initialValue={prompt}
+                onSave={handleSaveMarkdown}
+            />
         </div>
     );
 };
