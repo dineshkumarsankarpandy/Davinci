@@ -33,6 +33,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
     const [expandedTextarea, setExpandedTextarea] = useState<boolean>(false);
     const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
     const [referenceImageBase64, setReferenceImageBase64] = useState<string | null>(null);
+    const [hasFlowGenerated, setHasFlowGenerated] = useState<boolean>(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
     // Add state for the markdown editor dialog
@@ -46,12 +47,11 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
         }
     };
 
-    const toggleTextareaExpand = () => {
-        // Instead of expanding the textarea, open the markdown dialog
+    const toggleTextareaExpand = () => {        
         setIsMarkdownDialogOpen(true);
     };
 
-    // Handle saving the markdown content from the dialog
+
     const handleSaveMarkdown = (newContent: string) => {
         setPrompt(newContent);
     };
@@ -68,6 +68,12 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
         setPages(prevPages => prevPages.filter((_, index) => index !== indexToRemove));
     };
 
+    const handleDeleteAllFlow = () => {
+        setPages([]);
+        setHasFlowGenerated(false);
+        setFlowError(null);
+    };
+
     const handleAutoFlow = async () => {
         if (!prompt.trim()) {
             setFlowError("Please enter a prompt first to suggest a flow.");
@@ -79,6 +85,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
         try {
             const suggestedPages = await ApiService.generateFlow(prompt);
             setPages(suggestedPages);
+            setHasFlowGenerated(true);
         } catch (err: any) {
             console.error("Error generating auto flow:", err);
             setFlowError(err.message || "Failed to generate flow.");
@@ -133,8 +140,8 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
               setReferenceImagePreview(null);
             }
     
-          } catch (error: any) {
-            console.error("Error converting file to base64:", error);
+          } catch (err) {
+            throw new Error(getErrorMessage(err));
             setReferenceImagePreview(null);
             setReferenceImageBase64(null);
           }
@@ -147,20 +154,18 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
 
     const removeImage = () => {
         setReferenceImagePreview(null);
-        setReferenceImageBase64(null); // Clear base64 string as well
+        setReferenceImageBase64(null); 
         if (fileInputRef.current) {
-            fileInputRef.current.value = ''; // Reset file input
+            fileInputRef.current.value = ''; 
         }
     };
 
-    // Determine if image generation should be the primary action
     const isImageGenerationMode = !!referenceImageBase64 && pages.length === 0;
 
     return (
         <div className="h-screen flex">
             {/* Navbar */}
             <nav className="w-16 bg-gray-800 flex flex-col items-center py-4 shadow-lg z-20 shrink-0">
-                {/* ... (Navbar content unchanged) ... */}
                 <div className="text-white mb-6">
                     <h1 className="text-lg font-semibold">SDK</h1>
                 </div>
@@ -286,7 +291,21 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
 
                                 {/* Design Flow Section - Disable if image is selected? */}
                                 <div className={`space-y-3 ${referenceImageBase64 ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                    <Label>Design Flow (Optional)</Label>
+                                <div className="flex items-center justify-between">
+                                        <Label>Design Flow (Optional)</Label>
+                                        {pages.length > 0 && !referenceImageBase64 && (
+                                            <Button
+                                                type="button"
+                                                onClick={handleDeleteAllFlow}
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-6 w-6 text-gray-400 hover:text-red-500"
+                                                title="Delete All Flow"
+                                            >
+                                                <Trash2 size={14} />
+                                            </Button>
+                                        )}
+                                    </div>
                                     {referenceImageBase64 && (
                                         <p className="text-xs text-orange-600">Flow generation is disabled when a reference image is used (image generation creates a single page).</p>
                                     )}
@@ -303,7 +322,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                                         <Button
                                             type="button"
                                             onClick={handleAddPage}
-                                            disabled={!newPageName.trim() || isLoading || !!referenceImageBase64} // Disable
+                                            disabled={!newPageName.trim() || isLoading || !!referenceImageBase64}
                                             variant="secondary"
                                             size="icon"
                                         >
@@ -314,19 +333,19 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                                     <Button
                                         type="button"
                                         onClick={handleAutoFlow}
-                                        disabled={!prompt.trim() || isLoading || isAutoFlowLoading || !!referenceImageBase64} // Disable
+                                        disabled={!prompt.trim() || isLoading || isAutoFlowLoading || !!referenceImageBase64} 
                                         variant="outline"
                                         className="w-full"
                                     >
-                                        {isAutoFlowLoading ? (
+                                       {isAutoFlowLoading ? (
                                             <>
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                <span>Generating Flow...</span>
+                                                <span>{hasFlowGenerated ? 'Regenerating Flow...' : 'Generating Flow...'}</span>
                                             </>
                                         ) : (
                                             <>
                                                 <Sparkles size={16} className="mr-2" />
-                                                <span>Suggest Auto Flow</span>
+                                                <span>{hasFlowGenerated ? 'Regenerate Flow' : 'Suggest Auto Flow'}</span>
                                             </>
                                         )}
                                     </Button>
