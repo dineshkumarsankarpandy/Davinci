@@ -19,6 +19,7 @@ interface WebsiteGroupProps {
   onGroupSelect: (groupId: string) => void;
   onWebsiteSizeChange: (websiteId: string, width: number, height: number) => void;
   initialWebsiteSizes: Record<string, { width: number, height: number }>;
+  onUpdateHtmlContent: (websiteId: string, newHtmlContent: string) => void;
 }
 
 const DEFAULT_WEBSITE_WIDTH = 1440;
@@ -38,7 +39,8 @@ const WebsiteGroup: React.FC<WebsiteGroupProps> = ({
   isActiveGroup,
   onGroupSelect,
   onWebsiteSizeChange,
-  initialWebsiteSizes
+  initialWebsiteSizes,
+  onUpdateHtmlContent
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const groupRef = useRef<HTMLDivElement>(null);
@@ -236,6 +238,7 @@ const WebsiteGroup: React.FC<WebsiteGroupProps> = ({
             isInGroup={true}
             onGroupSelect={onGroupSelect}
             onWebsiteSizeChange={onWebsiteSizeChange}
+            onUpdateHtmlContent={onUpdateHtmlContent}
           />
         );
       })}

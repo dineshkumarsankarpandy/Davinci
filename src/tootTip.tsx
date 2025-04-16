@@ -3,13 +3,13 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { 
   Bold, 
   Italic, 
-  List, 
-  ListOrdered, 
+//   List, 
+//   ListOrdered, 
   Heading1, 
   Heading2, 
   AlignLeft, 
-  AlignCenter, 
-  AlignRight,
+//   AlignCenter, 
+//   AlignRight,
   Undo,
   Redo 
 } from 'lucide-react';
@@ -25,6 +25,7 @@ export const ToolbarPlugin: React.FC = () => {
     editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold');
   };
 
+ 
   const formatItalic = () => {
     editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic');
   };

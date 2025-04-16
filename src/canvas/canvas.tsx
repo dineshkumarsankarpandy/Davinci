@@ -163,8 +163,8 @@ const CanvasApp: React.FC = () => {
   }, []);
 
   // --- Main Actions ---
-  const handleGenerateWebsite = async (prompt: string, pages: string[]) => {
-    if (!prompt.trim() || isLoading) return;
+  const handleGenerateWebsite = async (prompt: string, pages: string[], base64Image: string | null = null) => {
+    if (!prompt.trim() && !base64Image || isLoading) return;
     setIsLoading(true);
     setError(null);
     setActiveWebsiteId(null);
@@ -179,17 +179,35 @@ const CanvasApp: React.FC = () => {
       });
       const newY = generatedWebsites.length > 0 ? maxY + VERTICAL_SPACING : 100;
 
-      if (pages.length === 0) {
-        console.log("Generating single page...");
-        const data = await ApiService.generateWebsite(prompt);
+      if (base64Image) {
+        const data = await ApiService.generateHtmlFromImage(prompt, base64Image);
+        const newGroupId = `IMAGE-${Date.now()}`;
         const newWebsite: WebsiteData = {
           id: `web-${Date.now()}`,
-          title: prompt.substring(0,10) + (prompt.length > 10 ? '...' : ''),
+          title: prompt.substring(0, 10) + (prompt.length > 10 ? '...' : ''),
           htmlContent: data.html,
           position: { x: HORIZONTAL_PLACEMENT_X, y: newY },
           width: DEFAULT_WEBSITE_WIDTH,
           height: DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT,
-          groupId: null,
+          groupId: newGroupId,
+          pageName: null,
+        };
+        setGeneratedWebsites(prev => [...prev, newWebsite]);
+        setActiveWebsiteId(newWebsite.id);
+      }
+      else if (pages.length === 0) {
+        console.log("Generating single page...");
+        const data = await ApiService.generateWebsite(prompt);
+        const newGroupId = `GROUP-${Date.now()}`;
+
+        const newWebsite: WebsiteData = {
+          id: `web-${Date.now()}`,
+          title: prompt.substring(0, 10) + (prompt.length > 10 ? '...' : ''),
+          htmlContent: data.html,
+          position: { x: HORIZONTAL_PLACEMENT_X, y: newY },
+          width: DEFAULT_WEBSITE_WIDTH,
+          height: DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT,
+          groupId: newGroupId,
           pageName: null,
         };
         setGeneratedWebsites(prev => [...prev, newWebsite]);
@@ -229,7 +247,6 @@ const CanvasApp: React.FC = () => {
         setActiveGroupId(newGroupId);
         console.log("Multi-page group generated:", newGroupId, newWebsites.map(w => w.id));
       }
-      // fitContent();
     } catch (err: any) {
       console.error("Generation Error:", err);
       setError(err.message || 'Error generating website(s).');
@@ -237,6 +254,8 @@ const CanvasApp: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+
 
   const handleDeleteWebsite = (id: string) => {
     const websiteToDelete = generatedWebsites.find(w => w.id === id);
@@ -297,7 +316,7 @@ const CanvasApp: React.FC = () => {
       setActiveGroupId(groupId);
       setActiveWebsiteId(null);
       setTimeout(() => {
-        canvasRef.current?.fitContentToView({  duration: 400 });
+        canvasRef.current?.fitContentToView({ duration: 400 });
       }, 150);
     }
   };
@@ -338,41 +357,41 @@ const CanvasApp: React.FC = () => {
     setIsUpdatingContent(true);
     setError(null);
     const { websiteId, sectionInfo } = regenerateModal;
-  
+
     try {
       const actionedWebsite = generatedWebsites.find(w => w.id === websiteId);
       if (!actionedWebsite) throw new Error("Actioned website not found for regeneration.");
-  
+
       const data = await ApiService.regenerateSection(actionedWebsite.htmlContent, sectionInfo.outerHTML, prompt);
-  
+
       const baseTitle = actionedWebsite.title.replace(/\s\(v\d+\)$/, '');
       const originalGroupId = actionedWebsite.groupId;
       const originalPageName = actionedWebsite.pageName;
-  
+
       // Count existing versions to determine next version number
       const existingVersionsCount = generatedWebsites.filter(w => {
         const versionPattern = new RegExp(`^${baseTitle}\\s*\\(v\\d+\\)$`);
         return versionPattern.test(w.title);
       }).length;
       const nextVersionNumber = existingVersionsCount + 1;
-      
+
       // Simple approach: position relative to the last website in the array
       let newX = HORIZONTAL_PLACEMENT_X; // Default X if no websites exist
       let newY = actionedWebsite.position.y; // Keep the same Y position
-      
+
       if (generatedWebsites.length > 0) {
         // Get the last website in the array
         const lastWebsite = generatedWebsites[generatedWebsites.length - 1];
-        const lastWebsiteWidth = websiteSizes[lastWebsite.id]?.width || 
-                                 lastWebsite.width || 
-                                 DEFAULT_WEBSITE_WIDTH;
-        
+        const lastWebsiteWidth = websiteSizes[lastWebsite.id]?.width ||
+          lastWebsite.width ||
+          DEFAULT_WEBSITE_WIDTH;
+
         // Position to the right of the last website
         newX = lastWebsite.position.x + lastWebsiteWidth + HORIZONTAL_VERSION_SPACING;
-        
+
         console.log(`[Regen] Positioning based on last website: ${lastWebsite.id} at position x:${lastWebsite.position.x}`);
       }
-      
+
       // Create new website version with calculated position
       const newWebsite: WebsiteData = {
         id: `web-${Date.now()}-v${nextVersionNumber}`,
@@ -384,25 +403,25 @@ const CanvasApp: React.FC = () => {
         groupId: originalGroupId,
         pageName: originalPageName
       };
-      
+
       console.log(`[Regen] New version positioned at x:${newX}, y:${newY}`);
-  
+
       // Explicitly add the new website at the end
       const newWebsites = [...generatedWebsites];
       newWebsites.push(newWebsite);
       setGeneratedWebsites(newWebsites);
-      
+
       // Set active states
       setActiveWebsiteId(newWebsite.id);
       if (originalGroupId) {
         setActiveGroupId(originalGroupId);
       }
-  
+
       // Ensure content fits to view after DOM update
       setTimeout(() => {
         canvasRef.current?.fitContentToView({ duration: 600 });
       }, 500);
-  
+
     } catch (err: any) {
       console.error("Regeneration Error:", err);
       setError(`Failed to regenerate section: ${err.message}`);
@@ -529,6 +548,15 @@ const CanvasApp: React.FC = () => {
     }
   };
 
+  const handleWebsiteContentChange = useCallback((websiteId: string, newHtmlContent: string) => {
+    setGeneratedWebsites((prevWebsites) =>
+      prevWebsites.map((website) =>
+        website.id === websiteId ? { ...website, htmlContent: newHtmlContent } : website
+      )
+    );
+  }, []);
+
+
   // --- Render ---
   const { grouped, ungrouped } = groupedWebsites();
 
@@ -548,10 +576,10 @@ const CanvasApp: React.FC = () => {
             minSize: "15px",
           }}
           panOnScroll
-          
+
           className="w-full h-full cursor-grab active:cursor-grabbing bg-dots"
           // onZoom={handleCanvasZoom}
-          backgroundConfig={{backgroundColor:'lightgrey'}}
+          backgroundConfig={{ backgroundColor: 'lightgrey' }}
         // No 'elements' prop needed
         >
           <div className="canvas-content" ref={canvasContentRef} style={{ position: 'relative' }}>
@@ -570,6 +598,7 @@ const CanvasApp: React.FC = () => {
                 canvasContentRef={canvasContentRef}
                 isInGroup={false}
                 onWebsiteSizeChange={handleWebsiteSizeChange}
+                onUpdateHtmlContent={handleWebsiteContentChange}
               />
             ))}
 
@@ -577,7 +606,7 @@ const CanvasApp: React.FC = () => {
             {Object.entries(grouped).map(([groupId, websitesInGroup]) => (
               <WebsiteGroup
                 key={groupId}
-                groupId={groupId} 
+                groupId={groupId}
                 websites={websitesInGroup}
                 activeWebsiteId={activeWebsiteId}
                 onActivateWebsite={handleSetActiveWebsite}
@@ -590,6 +619,7 @@ const CanvasApp: React.FC = () => {
                 onGroupSelect={handleSetActiveGroup}
                 onWebsiteSizeChange={handleWebsiteSizeChange}
                 initialWebsiteSizes={websiteSizes}
+                onUpdateHtmlContent={handleWebsiteContentChange}
               />
             ))}
           </div>
@@ -599,7 +629,7 @@ const CanvasApp: React.FC = () => {
           <div className="absolute bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-md z-50 max-w-sm">
             <strong className="font-bold">Error: </strong><span className="block sm:inline">{error}</span>
             <button onClick={() => setError(null)} className="absolute top-0 bottom-0 right-0 px-4 py-3">
-            <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.03a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" /></svg>
+              <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.03a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" /></svg>
             </button>
           </div>
         )}

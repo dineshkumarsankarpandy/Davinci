@@ -1,4 +1,6 @@
 import { GenerateResponse,RequestImagePayload } from "@/types/type";
+import axios from 'axios';
+import { getErrorMessage } from "@/lib/errorHandling";
 const API_BASE_URL = "http://localhost:8000";
 
 const ApiService = {
@@ -130,7 +132,20 @@ const ApiService = {
       throw new Error(`Error during enhancing the prompt: ${err} `);
     }
     return await response.json()
-  }
+  },
 
+  regenerateDesign: async (prompt: string, htmlContent:string): Promise<GenerateResponse> =>{
+    try{
+      const response = await axios .post<GenerateResponse>(`${API_BASE_URL}/api/regenerate-design`,{
+        prompt,
+        htmlContent
+      });
+      return response.data
+    }
+    catch(err){
+       throw new Error(getErrorMessage(err));
+    }
+
+  }
 };
 export default ApiService;

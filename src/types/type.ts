@@ -21,6 +21,7 @@ export interface RegenerateModalState {
   isOpen: boolean; 
   websiteId: string | null; 
   sectionInfo: { id: string; tagName: string; outerHTML: string; } | null; 
+  // htmlContent: string | null;
 }
 
 export interface EditContentModalState { 

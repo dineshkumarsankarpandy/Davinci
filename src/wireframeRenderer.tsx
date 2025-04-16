@@ -1,11 +1,15 @@
 // components/wireframeRenderer.tsx
 import React, { useRef, useState, useEffect, useCallback, RefObject } from 'react';
-import { Pencil, ArrowLeftRight, Star, Grab, Trash2, Target, Bot, Edit3 } from 'lucide-react';
-import useSectionHighlight from './useSectionHighlight'; // Adjust path
-import useContentHighlight, { ContentHighlightInfo, ContentActionType } from './useContentHighlights'; 
+import { Pencil, ArrowLeftRight, Star, Grab, Trash2, Target, Bot, Edit3, Sliders } from 'lucide-react';
+import useSectionHighlight from './useSectionHighlight';
+import useContentHighlight, { ContentHighlightInfo, ContentActionType } from './useContentHighlights';
 import { createPortal } from 'react-dom';
 import { SectionInfo } from './types/type';
-import FontSelector from './fontSelector'; // Import the new FontSelector component
+import FontSelector from './fontSelector';
+import ApiService from './services/apiService';
+import RegenerateDesignDialog from './modal/regenerateDesignModal';
+import { getErrorMessage } from './lib/errorHandling';
+import { Button } from './components/ui/button';
 
 interface CanvasTransformState { k: number; x: number; y: number; }
 
@@ -16,11 +20,12 @@ interface WireframeRendererProps {
     wireframePosition: { x: number; y: number };
     canvasTransform: CanvasTransformState;
     canvasContentRef: RefObject<HTMLDivElement | null>;
-    initialWidth?: number; 
+    initialWidth?: number;
     onDelete?: () => void;
     onSectionActionRequest?: (sectionInfo: SectionInfo, actionType: 'regenerate-section') => void;
     onContentActionRequest?: (contentInfo: ContentHighlightInfo & { element: HTMLElement }, actionType: ContentActionType) => void;
-    onSizeChange: (width: number, height: number) => void; // Required callback
+    onSizeChange: (width: number, height: number) => void;
+    onHtmlContentChange: (newHtmlContent: string) => void;
 }
 
 // --- Constants ---
@@ -37,7 +42,6 @@ const ToolbarButton: React.FC<{
         {label && <span className="font-medium whitespace-nowrap">{label}</span>}
     </button>
 );
-
 // --- Main Component ---
 const WireframeRenderer: React.FC<WireframeRendererProps> = ({
     title,
@@ -45,11 +49,12 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
     wireframePosition,
     canvasTransform,
     canvasContentRef,
-    initialWidth = DEFAULT_WIDTH, 
+    initialWidth = DEFAULT_WIDTH,
     onDelete,
     onSectionActionRequest,
     onContentActionRequest,
     onSizeChange,
+    onHtmlContentChange
 }) => {
     // --- Refs and State ---
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -61,6 +66,16 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
     const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
     const [selectedContentElement, setSelectedContentElement] = useState<HTMLElement | null>(null);
     const [selectedFont, setSelectedFont] = useState<string | null>(null);
+    // const [regeneratePrompt, setRegeneratePrompt] = useState<string>('');
+    const [regenerateDesignDialog, setRegenerateDesignDialog] = useState<{ isOpen: boolean; isLoading: boolean }>({
+        isOpen: false,
+        isLoading: false
+    });
+
+
+
+
+
 
     // --- Update internal width if prop changes ---
     useEffect(() => {
@@ -73,7 +88,7 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
     // --- Selection Callbacks ---
     const handleSectionSelect = useCallback((sectionId: string | null) => {
         setSelectedSectionId(prevId => prevId === sectionId ? null : sectionId);
-        setSelectedContentElement(null); 
+        setSelectedContentElement(null);
     }, []);
 
     const handleContentSelect = useCallback((element: HTMLElement | null) => {
@@ -89,6 +104,48 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
     const handleContentAction = useCallback((contentInfo: ContentHighlightInfo & { element: HTMLElement }, actionType: ContentActionType) => {
         onContentActionRequest?.(contentInfo, actionType);
     }, [onContentActionRequest]);
+
+    const handleRegenerateDesignClick = () => {
+        setRegenerateDesignDialog({
+            isOpen: true,
+            isLoading: false
+        });
+    };
+
+
+    const handleRegenerateDesignSubmit = async (prompt: string) => {
+        if (!prompt.trim()) return;
+
+        try {
+            setRegenerateDesignDialog(prev => ({ ...prev, isLoading: true }));
+            setIsLoading(true);
+
+            const response = await ApiService.regenerateDesign(prompt, htmlContent);
+
+            if (response && response.html) {
+                if (iframeRef.current) {
+                    iframeRef.current.srcdoc = response.html;
+                    onHtmlContentChange(response.html);
+                    onSizeChange(iframeWidth, iframeHeight);
+                } else {
+                    console.error("Iframe ref is null.  Cannot update content.");
+                }
+            } else {
+                throw new Error("API returned invalid response");
+            }
+
+        } catch (error) {
+            throw new Error(getErrorMessage(error));
+        } finally {
+            setRegenerateDesignDialog({ isOpen: false, isLoading: false });
+            setIsLoading(false);
+        }
+    };
+
+    const handleCloseRegenerateDesignDialog = () => {
+        setRegenerateDesignDialog({ isOpen: false, isLoading: false });
+    };
+
 
     // --- Instantiate Hooks ---
     const {
@@ -143,10 +200,10 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
         setIsLoading(true);
         let isMounted = true;
         setSelectedSectionId(null);
-        setSelectedContentElement(null); 
+        setSelectedContentElement(null);
         const handleLoad = () => {
             if (!isMounted || !iframe) return;
-            requestAnimationFrame(() => { 
+            requestAnimationFrame(() => {
                 if (!isMounted || !iframeRef.current) return;
                 const currentIframe = iframeRef.current;
                 try {
@@ -182,7 +239,7 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
                         const styleId = 'wireframe-interaction-styles';
                         let styleEl = iframeDoc.getElementById(styleId) as HTMLStyleElement | null;
                         if (!styleEl) { styleEl = iframeDoc.createElement('style'); styleEl.id = styleId; iframeDoc.head.appendChild(styleEl); }
-                        const cssContent = `...`; 
+                        const cssContent = `...`;
                         if (styleEl.textContent !== cssContent) styleEl.textContent = cssContent;
 
                         setIsLoading(false);
@@ -268,7 +325,7 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
     return (
         <>
             <div className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200" style={{ width: `${iframeWidth}px`, position: 'relative', transition: 'width 0.3s ease-in-out' }}>
-                <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 bg-gray-50 min-h-[44px] sticky top-0 z-20">
+                <div className="flex items-center  justify-between px-3 py-2 min-h-[44px] sticky top-0 z-20">
                     <div className="flex items-center gap-2 flex-grow mr-4 min-w-0">
                         <Grab size={16} className="text-gray-400 cursor-grab flex-shrink-0" />
                         <p className="text-sm font-medium text-gray-700 truncate" title={title}>{title}</p>
@@ -276,14 +333,18 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                         <ToolbarButton icon={Target} label="Section" tooltip={currentMode === 'section' ? "Disable Section Actions" : "Enable Section Actions"} onClick={() => toggleMode('section')} active={currentMode === 'section'} />
                         <ToolbarButton icon={Edit3} label="Content" tooltip={currentMode === 'content' ? "Disable Content Actions" : "Enable Content Actions"} onClick={() => toggleMode('content')} active={currentMode === 'content'} />
-                        
-                        {/* Replace dropdown with FontSelector component */}
-                        <FontSelector 
+                        <Button variant="outline" size="icon" onClick={handleRegenerateDesignClick} >
+                            <Sliders className="h-4 w-4" />
+                        </Button>
+
+                        <FontSelector
                             selectedFont={selectedFont}
                             onFontChange={handleFontChange}
                             availableFonts={availableFonts}
                         />
-                        
+
+
+
                         <div className="w-px h-5 bg-gray-300 mx-1"></div>
                         <ToolbarButton icon={ArrowLeftRight} tooltip={`Resize (${iframeWidth === DEFAULT_WIDTH ? 'Mobile' : 'Desktop'})`} onClick={handleResizeToggle} />
                         {onDelete && <ToolbarButton icon={Trash2} tooltip="Delete Wireframe" onClick={onDelete} className="hover:bg-red-100 hover:text-red-700 hover:border-red-300" />}
@@ -308,7 +369,15 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
                         </div>
                     )}
                 </div>
+
             </div>
+
+            <RegenerateDesignDialog
+                isOpen={regenerateDesignDialog.isOpen}
+                onClose={handleCloseRegenerateDesignDialog}
+                onSubmit={handleRegenerateDesignSubmit}
+                isLoading={regenerateDesignDialog.isLoading}
+            />
 
             {portalTarget && createPortal((hoveredSection && !selectedSectionId && currentMode === 'section' && !isLoading) &&
                 <div style={getSectionButtonPosition(hoveredSection)} className="absolute z-50 interaction-button-portal" onMouseEnter={handleSectionButtonEnter} onMouseLeave={handleSectionButtonLeave}>
@@ -319,6 +388,9 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
                     {hoveredContent.tagName !== 'img' && <button onClick={(e) => { e.stopPropagation(); handleContentActionClick(hoveredContent, 'edit-content'); }} className="flex items-center px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded shadow-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all duration-150 ease-in-out transform hover:scale-105 whitespace-nowrap"><Pencil size={12} className="mr-1.5" />Edit Content</button>}
                     <button onClick={(e) => { e.stopPropagation(); handleContentActionClick(hoveredContent, 'ask-ai'); }} className="flex items-center px-3 py-1.5 bg-sky-600 text-white text-xs font-semibold rounded shadow-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all duration-150 ease-in-out transform hover:scale-105 whitespace-nowrap"><Bot size={12} className="mr-1.5" />Ask AI</button>
                 </div>, portalTarget)}
+
+
+
         </>
     );
 };

@@ -102,7 +102,7 @@ const MarkdownEditorDialog: React.FC<MarkdownEditorDialogProps> = ({
         });
       });
     }, [editor]);
-    return null;
+    return null;   
   };
 
   return (
@@ -141,7 +141,7 @@ const MarkdownEditorDialog: React.FC<MarkdownEditorDialogProps> = ({
                 </div>
               )}
               
-              <div className="flex-grow overflow-hidden">
+              <div className="flex-grow overflow-hidden w-[85%] pl-28">
                 <LexicalComposer initialConfig={editorConfig}>
                   {/* Optional toolbar plugin */}
                   <div className="border-b p-2 bg-gray-50 flex items-center">
@@ -150,7 +150,7 @@ const MarkdownEditorDialog: React.FC<MarkdownEditorDialogProps> = ({
                   
                   <RichTextPlugin
                     contentEditable={
-                      <ContentEditable className="w-full h-full p-4 resize-none focus:outline-none border-2 border-transparent focus:border-blue-200 overflow-auto transition-colors" />
+                      <ContentEditable className="w-full  h-[80%] p-4 resize-none focus:outline-none border-2 border-solid border-neutral-500" />
                     }
                     placeholder={
                       <div className="absolute top-4 left-4 text-gray-400 pointer-events-none">

@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import MarkdownEditorDialog from './promptMarkdownDialog'; 
+import { fileToBase64 } from './lib/utils';
 
 interface SideNavbarProps {
     onGenerate: (prompt: string, pages: string[], base64Image?: string | null) => Promise<void>;
@@ -115,33 +116,30 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
    }
 
     // --- Image Handlers ---
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
+    
         if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const result = event.target?.result as string;
-                // Set the preview URL (full Data URL)
-                setReferenceImagePreview(result);
-                // Extract and set the Base64 part for the API
-                // Format is "data:[mime/type];base64,[actual_base64_string]"
-                const base64String = result.split(',')[1];
-                if (base64String) {
-                    setReferenceImageBase64(base64String);
-                } else {
-                    console.error("Could not extract base64 string from image data.");
-                    setReferenceImageBase64(null); // Clear if extraction fails
-                    setReferenceImagePreview(null);
-                }
-            };
-            reader.onerror = (error) => {
-                console.error("Error reading file:", error);
-                setReferenceImagePreview(null);
-                setReferenceImageBase64(null);
-            };
-            reader.readAsDataURL(file);
+          try {
+            const base64String = await fileToBase64(file);
+            setReferenceImagePreview(base64String);
+            const base64Content = base64String.split(',')[1];
+    
+            if (base64Content) {
+              setReferenceImageBase64(base64Content);
+            } else {
+              console.error("Could not extract base64 content from image data.");
+              setReferenceImageBase64(null);
+              setReferenceImagePreview(null);
+            }
+    
+          } catch (error: any) {
+            console.error("Error converting file to base64:", error);
+            setReferenceImagePreview(null);
+            setReferenceImageBase64(null);
+          }
         }
-    };
+      };
 
     const triggerImageUpload = () => {
         fileInputRef.current?.click();
