@@ -173,11 +173,11 @@ const WebsiteGroup: React.FC<WebsiteGroupProps> = ({
         width: groupBounds.width,
         height: groupBounds.height,
         borderRadius: '16px',
-        border: `3px dashed ${isActiveGroup ? 'rgba(128, 0, 128, 0.7)' : 'rgba(156, 163, 175, 0.5)'}`,
-        backgroundColor: isActiveGroup ? 'rgba(243, 232, 255, 0.3)' : 'rgba(243, 244, 246, 0.2)',
-        boxShadow: isActiveGroup ? '0 0 0 4px rgba(128, 0, 128, 0.15)' : 'none',
+        border: `3px dashed 'rgba(156, 163, 175, 0.5)'}`,
+        backgroundColor:  'rgba(243, 244, 246, 0.2)',
+        boxShadow: 'none',
         transition: 'all 0.3s ease',
-        zIndex: isActiveGroup ? 5 : 0,
+        zIndex:  0,
         pointerEvents: 'auto',
         overflow: 'visible',
       }}
@@ -188,7 +188,7 @@ const WebsiteGroup: React.FC<WebsiteGroupProps> = ({
       className={`website-group-container ${isActiveGroup ? 'active-group' : ''}`}
     >
       {/* Group Header */}
-
+      
           <div
             className="absolute -top-8 left-0 right-0 flex items-center gap-2 cursor-pointer group"
             style={{ 
@@ -198,20 +198,20 @@ const WebsiteGroup: React.FC<WebsiteGroupProps> = ({
               padding: '0 12px',
               display: 'flex',
               justifyContent: 'space-between',
-             backgroundColor: isActiveGroup ? 'rgb(142, 36, 170)' : 'rgb(75, 85, 99)',
+             backgroundColor:'rgb(75, 85, 99)',
 
               
             }}
             onClick={(e) => { e.stopPropagation(); onGroupSelect(groupId); }}
           >
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium shadow-md transition-colors ${isActiveGroup ? 'bg-purple-600 text-white' : 'bg-gray-600 text-white group-hover:bg-gray-700'}`}>
-              <Layers size={14} />
+            <div className={'flex items-center gap-2 px-3 py-1 text-white text-md font-medium shadow-md transition-colors '}>
+              <Layers size={16} />
               <span className="whitespace-nowrap">{groupDisplayName}</span>
             </div>
             <button
               onClick={toggleExpand}
               title={isExpanded ? "Collapse Group" : "Expand Group"}
-              className={`p-1.5 rounded-full transition-colors text-white shadow-md ${isActiveGroup ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 hover:bg-gray-700'}`}
+              className={'p-4  transition-colors text-white text-xl shadow-md' }
             >
               {isExpanded ? <EyeOff size={14} /> : <Eye size={14} />}
             </button>
@@ -223,6 +223,7 @@ const WebsiteGroup: React.FC<WebsiteGroupProps> = ({
         const relativeY = website.position.y - groupBounds.y + GROUP_PADDING;
 
         return (
+
           <WebsiteDisplay
             key={website.id}
             website={website}

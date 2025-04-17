@@ -1,11 +1,11 @@
 import { GenerateResponse,RequestImagePayload } from "@/types/type";
 import axios from 'axios';
 import { getErrorMessage } from "@/lib/errorHandling";
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "http://localhost:8000/";
 
 const ApiService = {
   generateWebsite: async (prompt: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/generate-html`, {
+    const response = await fetch(`${API_BASE_URL}canvas/generate-html`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt }),
@@ -20,7 +20,7 @@ const ApiService = {
   },
   
   generateMultipleWebsites: async (prompt: string, pages: string[]) => {
-    const response = await fetch(`${API_BASE_URL}/api/generate-multiple-html`, {
+    const response = await fetch(`${API_BASE_URL}canvas/generate-multiple-html`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, pages }),
@@ -36,7 +36,7 @@ const ApiService = {
   },
   
   regenerateSection: async (fullHtml: string, outerHtml: string, prompt: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/regenerate-section`, {
+    const response = await fetch(`${API_BASE_URL}canvas/regenerate-section`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -55,7 +55,7 @@ const ApiService = {
   },
   
   processWithAI: async (text: string, action: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/regenerate-text`, {
+    const response = await fetch(`${API_BASE_URL}canvas/regenerate-text`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -73,7 +73,7 @@ const ApiService = {
   },
   
   generateFlow: async (prompt: string): Promise<string[]> => {
-    const response = await fetch(`${API_BASE_URL}/api/generate-flow`, {
+    const response = await fetch(`${API_BASE_URL}canvas/generate-flow`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt }),
@@ -83,9 +83,7 @@ const ApiService = {
       const e = await response.text();
       throw new Error(`Flow Generation Error ${response.status}: ${e}`);
     }
-
     const data: { page_names: string } = await response.json();
-
     try {
       const parsedPageNames = JSON.parse(data.page_names);
       if (Array.isArray(parsedPageNames) && parsedPageNames.every(item => typeof item === 'string')) {
@@ -103,7 +101,7 @@ const ApiService = {
 
   generateHtmlFromImage: async (prompt: string, base64Str: string): Promise<GenerateResponse> => {
     const payload: RequestImagePayload = { prompt, base64Str };
-    const response = await fetch(`${API_BASE_URL}/api/generate-html-from-image`, {
+    const response = await fetch(`${API_BASE_URL}canvas/generate-html-from-image`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -113,7 +111,6 @@ const ApiService = {
       const e = await response.text();
       throw new Error(`Image Gen HTTP ${response.status}: ${e}`);
     }
-
     return await response.json();
   },
 
@@ -121,8 +118,7 @@ const ApiService = {
     const payload ={
       prompt
     }
-
-    const response = await fetch(`${API_BASE_URL}/api/enhance-prompt`, {
+    const response = await fetch(`${API_BASE_URL}canvas/enhance-prompt`, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify(payload)
@@ -136,7 +132,7 @@ const ApiService = {
 
   regenerateDesign: async (prompt: string, htmlContent:string): Promise<GenerateResponse> =>{
     try{
-      const response = await axios .post<GenerateResponse>(`${API_BASE_URL}/api/regenerate-design`,{
+      const response = await axios .post<GenerateResponse>(`${API_BASE_URL}canvas/regenerate-design`,{
         prompt,
         htmlContent
       });

@@ -132,25 +132,7 @@ const CanvasApp: React.FC = () => {
     return null;
   }, [generatedWebsites]);
 
-  // --- Event Handlers ---
-  const handleCanvasZoom = useCallback((event: any) => {
-    const transform = event?.transform;
-    if (transform?.k && transform?.x !== undefined && transform?.y !== undefined) {
-      setCanvasTransform(prev => {
-        if (prev.k !== transform.k || prev.x !== transform.x || prev.y !== transform.y) {
-          return { k: transform.k, x: transform.x, y: transform.y };
-        } return prev;
-      });
-    } else {
-      const state = canvasRef.current?.getCanvasState();
-      if (state?.currentPosition) {
-        const { k, x, y } = state.currentPosition;
-        setCanvasTransform(prev => {
-          if (prev.k !== k || prev.x !== x || prev.y !== y) { return { k, x, y }; } return prev;
-        });
-      }
-    }
-  }, []);
+  
 
   const handleWebsiteSizeChange = useCallback((websiteId: string, width: number, height: number) => {
     setWebsiteSizes(prev => {
@@ -557,6 +539,9 @@ const CanvasApp: React.FC = () => {
   }, []);
 
 
+  
+
+
   // --- Render ---
   const { grouped, ungrouped } = groupedWebsites();
 
@@ -566,7 +551,7 @@ const CanvasApp: React.FC = () => {
       <main className="flex-grow relative overflow-hidden">
         <ReactInfiniteCanvas
           ref={canvasRef}
-          minZoom={0.3} maxZoom={4}
+          minZoom={0.15} maxZoom={4}
           scrollBarConfig={{
             renderScrollBar: true,
             startingPosition: { x: 0, y: 0 },
@@ -575,13 +560,13 @@ const CanvasApp: React.FC = () => {
             thickness: "8px",
             minSize: "15px",
           }}
-          panOnScroll
+          // panOnScroll
 
-          className="w-full h-full cursor-grab active:cursor-grabbing bg-dots"
-          // onZoom={handleCanvasZoom}
+          className="w-full h-full"
           backgroundConfig={{ backgroundColor: 'lightgrey' }}
         // No 'elements' prop needed
         >
+          {/* <EventBlocker shouldBlockZoom={true}> */}
           <div className="canvas-content" ref={canvasContentRef} style={{ position: 'relative' }}>
             {/* Render ungrouped websites */}
             {ungrouped.map((website) => (
@@ -620,9 +605,11 @@ const CanvasApp: React.FC = () => {
                 onWebsiteSizeChange={handleWebsiteSizeChange}
                 initialWebsiteSizes={websiteSizes}
                 onUpdateHtmlContent={handleWebsiteContentChange}
+               
               />
             ))}
           </div>
+          {/* </EventBlocker> */}
         </ReactInfiniteCanvas>
         <LoadingOverlay isLoading={isLoading && !isUpdatingContent} isUpdating={isUpdatingContent} progress={75} />
         {error && (

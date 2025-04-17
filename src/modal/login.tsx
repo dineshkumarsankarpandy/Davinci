@@ -51,9 +51,9 @@ export default function LoginForm() {
       console.log("Login successful:", response.data);
 
       setTimeout(() => {
-         navigate("/dashboard");
+         navigate("/");
       }, 5000); 
-      navigate("/dashboard");
+      navigate("/");
 
     } catch (error: any) {
     
@@ -69,19 +69,19 @@ export default function LoginForm() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center  bg-opacity-50 z-50">
-        <Loader />
-      </div>
-    );
-  }
+//   if (isLoading) {
+//     return (
+//       <div className="fixed inset-0 flex items-center justify-center  bg-opacity-50 z-50">
+//         <Loader />
+//       </div>
+//     );
+//   }
 
   return (
     <div className="relative flex min-h-screen">
       <Toaster position="top-center" reverseOrder={false} />
 
-      <div className="w-[45%] bg-red-500">
+      <div className="w-[45%] bg-purple-500">
       </div>
       <div className="flex items-center justify-center w-[55%] bg-gray-50">
         <Card className="w-full max-w-md">
@@ -102,7 +102,7 @@ export default function LoginForm() {
                   value={mail}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  disabled={isLoading} // Disable input while loading
+                  disabled={isLoading} 
                 />
               </div>
               <div className="space-y-2">
@@ -114,14 +114,14 @@ export default function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  disabled={isLoading} // Disable input while loading
+                  disabled={isLoading}
                 />
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-2">
               <Button
                 type="submit"
-                className="w-full mt-8 bg-red-600 hover:bg-red-400"
+                className="w-full mt-8 bg-purple-600 hover:bg-pruple-400"
               >
                   "Sign In"
               </Button>

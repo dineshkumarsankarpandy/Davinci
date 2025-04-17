@@ -58,7 +58,7 @@ const RegenerateModal: React.FC<RegenerateModalProps> = ({
           <Button
             onClick={() => onSubmit(promptValue)}
             disabled={isLoading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="w-full bg-purple-600 hover:bg-purple -700 text-white"
           >
             {isLoading ? 
               <Loader2 size={16} className="mr-2 animate-spin" /> : 

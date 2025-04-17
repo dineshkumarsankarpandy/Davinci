@@ -3,6 +3,7 @@ import WireframeRenderer from '../wireframeRenderer';
 import { WebsiteData, CanvasTransformState, SectionInfo } from '../types/type';
 import { ContentHighlightInfo, ContentActionType } from '../useContentHighlights';
 import { FileText, Copy } from 'lucide-react';
+import { EventBlocker } from 'react-infinite-canvas'; 
 
 interface WebsiteDisplayProps {
     website: WebsiteData;
@@ -18,7 +19,8 @@ interface WebsiteDisplayProps {
     onGroupSelect?: (groupId: string) => void;
     onWebsiteSizeChange: (websiteId: string, width: number, height: number) => void;
     relativePosition?: { x: number; y: number };
-    onUpdateHtmlContent: (websiteId: string, newHtmlContent: string) => void //
+    onUpdateHtmlContent: (websiteId: string, newHtmlContent: string) => void;
+    
 }
 
 const DEFAULT_WEBSITE_WIDTH = 1440;
@@ -34,7 +36,7 @@ const WebsiteDisplay: React.FC<WebsiteDisplayProps> = ({
     isInGroup,
     onWebsiteSizeChange,
     relativePosition,
-    onUpdateHtmlContent
+    onUpdateHtmlContent,
 }) => {
     const [internalWidth, setInternalWidth] = useState(website.width || DEFAULT_WEBSITE_WIDTH);
 
@@ -74,9 +76,9 @@ const WebsiteDisplay: React.FC<WebsiteDisplayProps> = ({
         position: 'absolute' as const,
         left: positionLeft,
         top: positionTop,
-        boxShadow: isActive
-            ? '0 0 0 3px rgba(79, 70, 229, 0.6), 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)'
-            : '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
+        // boxShadow: isActive
+        //     ? '0 0 0 3px rgba(79, 70, 229, 0.6), 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)'
+        //     : '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
         transition: 'box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out, left 0.3s ease, top 0.3s ease',
         borderRadius: '10px',
         transform: isActive ? 'scale(1.01)' : 'scale(1)',
@@ -106,7 +108,7 @@ const WebsiteDisplay: React.FC<WebsiteDisplayProps> = ({
                     {versionIndicator}
                 </div>
             )}
-
+            <EventBlocker shouldBlockZoom={!isActive}>
             <WireframeRenderer
                 key={website.id + '-renderer'}
                 title={website.title}
@@ -121,6 +123,7 @@ const WebsiteDisplay: React.FC<WebsiteDisplayProps> = ({
                 onSizeChange={(width: number, height: number) => handleIframeSizeChange(width, height)}
                 onHtmlContentChange={handleHtmlContentChange}
             />
+            </EventBlocker>
         </div>
     );
 };

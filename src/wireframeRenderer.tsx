@@ -9,7 +9,8 @@ import FontSelector from './fontSelector';
 import ApiService from './services/apiService';
 import RegenerateDesignDialog from './modal/regenerateDesignModal';
 import { getErrorMessage } from './lib/errorHandling';
-import { Button } from './components/ui/button';
+import { EventBlocker } from 'react-infinite-canvas';
+// import { Button } from './components/ui/button';
 
 interface CanvasTransformState { k: number; x: number; y: number; }
 
@@ -37,12 +38,17 @@ const availableFonts = ['Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Winky Roug
 const ToolbarButton: React.FC<{
     icon: React.ElementType, label?: string, tooltip: string, onClick?: () => void, className?: string, active?: boolean
 }> = ({ icon: Icon, label, tooltip, onClick, className = '', active = false }) => (
-    <button onClick={onClick} title={tooltip} className={`flex items-center justify-center border rounded-md transition-colors duration-150 ${active ? 'bg-indigo-100 text-indigo-700 border-indigo-300 ring-1 ring-indigo-300 shadow-inner' : 'border-gray-300 hover:bg-gray-100 bg-white text-gray-700 hover:border-gray-400'} ${label ? 'px-3 py-1.5 h-8 text-xs' : 'w-8 h-8'} ${className}`}>
+    <button
+        onClick={onClick}
+        title={tooltip}
+        className={`flex items-center justify-center rounded-md transition-colors duration-150
+            ${active ? 'bg-indigo-100 text-indigo-700 border-indigo-300 ring-1 ring-indigo-300 shadow-inner' : 'border-gray-300 hover:bg-gray-100 bg-white text-gray-700 hover:border-gray-400'}
+            ${label ? 'px-2 py-1 h-7 text-xs' : 'w-7 h-7'} ${className} flex-shrink-0`}>
         <Icon size={label ? 14 : 16} strokeWidth={1.75} className={`${label ? "mr-1.5" : ""} flex-shrink-0`} />
         {label && <span className="font-medium whitespace-nowrap">{label}</span>}
     </button>
 );
-// --- Main Component ---
+//--- Main Component ---
 const WireframeRenderer: React.FC<WireframeRendererProps> = ({
     title,
     htmlContent,
@@ -229,6 +235,13 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
                             }
                         });
 
+
+                        // iframeDoc.addEventListener('wheel', (e) => {
+                        //     if (e.ctrlKey || e.metaKey) {
+                        //       e.preventDefault(); // Prevent browser zoom
+                        //     }
+                        //   }, { passive: false });
+
                         // Calculate height
                         const scrollHeight = Math.max(body.scrollHeight, htmlEl.scrollHeight, MIN_HEIGHT);
                         const currentWidth = currentIframe.offsetWidth;
@@ -324,8 +337,10 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
 
     return (
         <>
-            <div className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200" style={{ width: `${iframeWidth}px`, position: 'relative', transition: 'width 0.3s ease-in-out' }}>
-                <div className="flex items-center  justify-between px-3 py-2 min-h-[44px] sticky top-0 z-20">
+            <EventBlocker shouldBlockZoom={true}>
+            
+           <div style={{ width: `${iframeWidth}px`, position: 'relative', transition: 'width 0.3s ease-in-out' }}>
+                <div className="flex items-center justify-between px-3 py-2 min-h-[44px] sticky top-0 z-20">
                     <div className="flex items-center gap-2 flex-grow mr-4 min-w-0">
                         <Grab size={16} className="text-gray-400 cursor-grab flex-shrink-0" />
                         <p className="text-sm font-medium text-gray-700 truncate" title={title}>{title}</p>
@@ -333,9 +348,12 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                         <ToolbarButton icon={Target} label="Section" tooltip={currentMode === 'section' ? "Disable Section Actions" : "Enable Section Actions"} onClick={() => toggleMode('section')} active={currentMode === 'section'} />
                         <ToolbarButton icon={Edit3} label="Content" tooltip={currentMode === 'content' ? "Disable Content Actions" : "Enable Content Actions"} onClick={() => toggleMode('content')} active={currentMode === 'content'} />
-                        <Button variant="outline" size="icon" onClick={handleRegenerateDesignClick} >
-                            <Sliders className="h-4 w-4" />
-                        </Button>
+                        <ToolbarButton
+                            icon={Sliders}
+                            label="Regenerate Design"
+                            tooltip="Regenerate Design"
+                            onClick={handleRegenerateDesignClick}
+                        />
 
                         <FontSelector
                             selectedFont={selectedFont}
@@ -351,6 +369,7 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
                     </div>
                 </div>
                 <div className="relative preview-element border-t-0 overflow-hidden" style={{ height: `${iframeHeight}px`, width: '100%', transition: 'height 0.2s ease-out' }}>
+
                     <iframe
                         ref={iframeRef}
                         title={`preview-${title}`}
@@ -390,7 +409,7 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
                 </div>, portalTarget)}
 
 
-
+        </EventBlocker>
         </>
     );
 };
