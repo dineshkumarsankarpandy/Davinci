@@ -27,9 +27,9 @@ const FontSelector: React.FC<FontSelectorProps> = ({
     setTempSelectedFont(font);
   };
 
-  const handleClearFont = () => {
-    setTempSelectedFont(null);
-  };
+  // const handleClearFont = () => {
+  //   setTempSelectedFont(null);
+  // };
 
   const handleSave = () => {
     onFontChange(tempSelectedFont);

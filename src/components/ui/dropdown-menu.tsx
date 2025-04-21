@@ -1,334 +1,255 @@
-import React, { useRef, useState, useEffect, useCallback, RefObject } from 'react';
-import { Pencil, ArrowLeftRight, Star, Grab, Trash2, Target, Bot, Edit3, Sliders } from 'lucide-react';
-import useSectionHighlight from './useSectionHighlight'; // Adjust path
-import useContentHighlight, { ContentHighlightInfo, ContentActionType } from './useContentHighlights';
-import { createPortal } from 'react-dom';
-import { SectionInfo } from './types/type';
-import FontSelector from './fontSelector'; // Import the new FontSelector component
-import {
-  Menubar,
-  MenubarContent,
-  MenubarItem,
-  MenubarMenu,
-  MenubarTrigger,
-  MenubarSeparator
-} from '@/components/ui/menubar';
+import * as React from "react"
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
+import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 
-interface CanvasTransformState { k: number; x: number; y: number; }
+import { cn } from "@/lib/utils"
 
-interface WireframeRendererProps {
-    title: string;
-    htmlContent: string;
-    wireframePosition: { x: number; y: number };
-    canvasTransform: CanvasTransformState;
-    canvasContentRef: RefObject<HTMLDivElement | null>;
-    initialWidth?: number;
-    onDelete?: () => void;
-    onSectionActionRequest?: (sectionInfo: SectionInfo, actionType: 'regenerate-section') => void;
-    onContentActionRequest?: (contentInfo: ContentHighlightInfo & { element: HTMLElement }, actionType: ContentActionType) => void;
-    onSizeChange: (width: number, height: number) => void;
+function DropdownMenu({
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
+  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
 }
 
-const DEFAULT_WIDTH = 1440;
-const MIN_HEIGHT = 300;
-const FONT_LINK_ID = 'custom-font-link';
-const availableFonts = ['Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Winky Rough', 'Bungee Spice', 'Amarante', 'Amaranth', 'Amatic SC', 'Amiko', 'Amiri', 'Amita', 'Anaheim', 'Andada Pro'];
+function DropdownMenuPortal({
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>) {
+  return (
+    <DropdownMenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />
+  )
+}
 
-const ToolbarButton: React.FC<{
-    icon: React.ElementType, label?: string, tooltip: string, onClick?: () => void, className?: string, active?: boolean
-}> = ({ icon: Icon, label, tooltip, onClick, className = '', active = false }) => (
-    <button onClick={onClick} title={tooltip} className={`flex items-center justify-center border rounded-md transition-colors duration-150 ${active ? 'bg-indigo-100 text-indigo-700 border-indigo-300 ring-1 ring-indigo-300 shadow-inner' : 'border-gray-300 hover:bg-gray-100 bg-white text-gray-700 hover:border-gray-400'} ${label ? 'px-3 py-1.5 h-8 text-xs' : 'w-8 h-8'} ${className}`}>
-        <Icon size={label ? 14 : 16} strokeWidth={1.75} className={`${label ? "mr-1.5" : ""} flex-shrink-0`} />
-        {label && <span className="font-medium whitespace-nowrap">{label}</span>}
-    </button>
-);
+function DropdownMenuTrigger({
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
+  return (
+    <DropdownMenuPrimitive.Trigger
+      data-slot="dropdown-menu-trigger"
+      {...props}
+    />
+  )
+}
 
-const WireframeRenderer: React.FC<WireframeRendererProps> = ({
-    title,
-    htmlContent,
-    wireframePosition,
-    canvasTransform,
-    canvasContentRef,
-    initialWidth = DEFAULT_WIDTH,
-    onDelete,
-    onSectionActionRequest,
-    onContentActionRequest,
-    onSizeChange,
-}) => {
-    const iframeRef = useRef<HTMLIFrameElement>(null);
-    const [iframeHeight, setIframeHeight] = useState<number>(MIN_HEIGHT);
-    const [iframeWidth, setIframeWidth] = useState<number>(initialWidth);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-    type InteractionMode = 'none' | 'section' | 'content';
-    const [currentMode, setCurrentMode] = useState<InteractionMode>('none');
-    const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
-    const [selectedContentElement, setSelectedContentElement] = useState<HTMLElement | null>(null);
-    const [selectedFont, setSelectedFont] = useState<string | null>(null);
+function DropdownMenuContent({
+  className,
+  sideOffset = 4,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+  return (
+    <DropdownMenuPrimitive.Portal>
+      <DropdownMenuPrimitive.Content
+        data-slot="dropdown-menu-content"
+        sideOffset={sideOffset}
+        className={cn(
+          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border p-1 shadow-md",
+          className
+        )}
+        {...props}
+      />
+    </DropdownMenuPrimitive.Portal>
+  )
+}
 
-    useEffect(() => {
-        if (initialWidth !== iframeWidth) {
-            setIframeWidth(initialWidth);
-            onSizeChange(initialWidth, iframeHeight);
-        }
-    }, [initialWidth, iframeWidth, iframeHeight, onSizeChange]);
+function DropdownMenuGroup({
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Group>) {
+  return (
+    <DropdownMenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
+  )
+}
 
-    const handleSectionSelect = useCallback((sectionId: string | null) => {
-        setSelectedSectionId(prevId => prevId === sectionId ? null : sectionId);
-        setSelectedContentElement(null);
-    }, []);
+function DropdownMenuItem({
+  className,
+  inset,
+  variant = "default",
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
+  inset?: boolean
+  variant?: "default" | "destructive"
+}) {
+  return (
+    <DropdownMenuPrimitive.Item
+      data-slot="dropdown-menu-item"
+      data-inset={inset}
+      data-variant={variant}
+      className={cn(
+        "focus:bg-accent focus:text-accent-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:!text-destructive [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
+      {...props}
+    />
+  )
+}
 
-    const handleContentSelect = useCallback((element: HTMLElement | null) => {
-        setSelectedContentElement(prevEl => prevEl === element ? null : element);
-        setSelectedSectionId(null);
-    }, []);
+function DropdownMenuCheckboxItem({
+  className,
+  children,
+  checked,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.CheckboxItem>) {
+  return (
+    <DropdownMenuPrimitive.CheckboxItem
+      data-slot="dropdown-menu-checkbox-item"
+      className={cn(
+        "focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
+      checked={checked}
+      {...props}
+    >
+      <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+        <DropdownMenuPrimitive.ItemIndicator>
+          <CheckIcon className="size-4" />
+        </DropdownMenuPrimitive.ItemIndicator>
+      </span>
+      {children}
+    </DropdownMenuPrimitive.CheckboxItem>
+  )
+}
 
-    const handleSectionAction = useCallback((sectionInfo: SectionInfo, actionType: 'regenerate-section') => {
-        onSectionActionRequest?.(sectionInfo, actionType);
-    }, [onSectionActionRequest]);
+function DropdownMenuRadioGroup({
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.RadioGroup>) {
+  return (
+    <DropdownMenuPrimitive.RadioGroup
+      data-slot="dropdown-menu-radio-group"
+      {...props}
+    />
+  )
+}
 
-    const handleContentAction = useCallback((contentInfo: ContentHighlightInfo & { element: HTMLElement }, actionType: ContentActionType) => {
-        onContentActionRequest?.(contentInfo, actionType);
-    }, [onContentActionRequest]);
+function DropdownMenuRadioItem({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.RadioItem>) {
+  return (
+    <DropdownMenuPrimitive.RadioItem
+      data-slot="dropdown-menu-radio-item"
+      className={cn(
+        "focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
+      {...props}
+    >
+      <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+        <DropdownMenuPrimitive.ItemIndicator>
+          <CircleIcon className="size-2 fill-current" />
+        </DropdownMenuPrimitive.ItemIndicator>
+      </span>
+      {children}
+    </DropdownMenuPrimitive.RadioItem>
+  )
+}
 
-    const {
-        hoveredSection, handleSectionButtonEnter, handleSectionButtonLeave,
-        getSectionButtonPosition, handleSectionButtonClick,
-    } = useSectionHighlight({
-        iframeRef, canvasTransform, wireframePosition,
-        onSectionAction: handleSectionAction,
-        onSectionSelect: handleSectionSelect,
-        isSectionHighlightActive: currentMode === 'section'
-    });
-    const {
-        hoveredContent, handleContentButtonEnter, handleContentButtonLeave,
-        getContentButtonPosition, handleContentActionClick,
-    } = useContentHighlight({
-        iframeRef, canvasTransform, wireframePosition,
-        onContentAction: handleContentAction,
-        onContentSelect: handleContentSelect,
-        isContentHighlightActive: currentMode === 'content'
-    });
+function DropdownMenuLabel({
+  className,
+  inset,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Label> & {
+  inset?: boolean
+}) {
+  return (
+    <DropdownMenuPrimitive.Label
+      data-slot="dropdown-menu-label"
+      data-inset={inset}
+      className={cn(
+        "px-2 py-1.5 text-sm font-medium data-[inset]:pl-8",
+        className
+      )}
+      {...props}
+    />
+  )
+}
 
-    const applyFont = useCallback(() => {
-        if (iframeRef.current?.contentDocument) {
-            const iframeDoc = iframeRef.current.contentDocument;
-            const existingLink = iframeDoc.getElementById(FONT_LINK_ID);
-            if (existingLink) {
-                existingLink.remove();
-            }
-            if (selectedFont) {
-                const link = iframeDoc.createElement('link');
-                link.id = FONT_LINK_ID;
-                link.rel = 'stylesheet';
-                link.href = `https://fonts.googleapis.com/css2?family=${selectedFont.replace(' ', '+')}&display=swap`;
-                iframeDoc.head.appendChild(link);
-                iframeDoc.body.style.fontFamily = `'${selectedFont}', sans-serif`;
-            } else {
-                iframeDoc.body.style.removeProperty('font-family');
-            }
-        }
-    }, [selectedFont]);
+function DropdownMenuSeparator({
+  className,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
+  return (
+    <DropdownMenuPrimitive.Separator
+      data-slot="dropdown-menu-separator"
+      className={cn("bg-border -mx-1 my-1 h-px", className)}
+      {...props}
+    />
+  )
+}
 
-    const handleFontChange = (font: string | null) => {
-        setSelectedFont(font);
-    };
+function DropdownMenuShortcut({
+  className,
+  ...props
+}: React.ComponentProps<"span">) {
+  return (
+    <span
+      data-slot="dropdown-menu-shortcut"
+      className={cn(
+        "text-muted-foreground ml-auto text-xs tracking-widest",
+        className
+      )}
+      {...props}
+    />
+  )
+}
 
-    useEffect(() => {
-        const iframe = iframeRef.current; if (!iframe) return;
-        setIsLoading(true);
-        let isMounted = true;
-        setSelectedSectionId(null);
-        setSelectedContentElement(null);
-        const handleLoad = () => {
-            if (!isMounted || !iframe) return;
-            requestAnimationFrame(() => {
-                if (!isMounted || !iframeRef.current) return;
-                const currentIframe = iframeRef.current;
-                try {
-                    const iframeDoc = currentIframe.contentDocument;
-                    const body = iframeDoc?.body;
-                    const htmlEl = iframeDoc?.documentElement;
+function DropdownMenuSub({
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Sub>) {
+  return <DropdownMenuPrimitive.Sub data-slot="dropdown-menu-sub" {...props} />
+}
 
-                    if (iframeDoc && body && htmlEl) {
-                        htmlEl.style.overflow = 'hidden'; htmlEl.style.height = 'auto';
-                        body.style.overflow = 'hidden'; body.style.height = 'auto'; body.style.margin = '0';
+function DropdownMenuSubTrigger({
+  className,
+  inset,
+  children,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger> & {
+  inset?: boolean
+}) {
+  return (
+    <DropdownMenuPrimitive.SubTrigger
+      data-slot="dropdown-menu-sub-trigger"
+      data-inset={inset}
+      className={cn(
+        "focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground flex cursor-default items-center rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[inset]:pl-8",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <ChevronRightIcon className="ml-auto size-4" />
+    </DropdownMenuPrimitive.SubTrigger>
+  )
+}
 
-                        let contentCounter = 0;
-                        body.querySelectorAll('p, h1, h2, h3, h4, h5, h6, span, a, button, li, img, strong, em, blockquote').forEach(el => {
-                            if (el instanceof HTMLElement && !el.closest('script') && !el.closest('style')) {
-                                if (!el.dataset.contentId) {
-                                    el.dataset.contentId = `content-${Date.now()}-${contentCounter++}`;
-                                }
-                                if (el.tagName === 'IMG') {
-                                    (el as HTMLImageElement).draggable = false;
-                                }
-                            }
-                        });
+function DropdownMenuSubContent({
+  className,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
+  return (
+    <DropdownMenuPrimitive.SubContent
+      data-slot="dropdown-menu-sub-content"
+      className={cn(
+        "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-md border p-1 shadow-lg",
+        className
+      )}
+      {...props}
+    />
+  )
+}
 
-                        const scrollHeight = Math.max(body.scrollHeight, htmlEl.scrollHeight, MIN_HEIGHT);
-                        const currentWidth = currentIframe.offsetWidth;
-
-                        setIframeHeight(scrollHeight);
-                        onSizeChange(currentWidth, scrollHeight);
-
-                        const styleId = 'wireframe-interaction-styles';
-                        let styleEl = iframeDoc.getElementById(styleId) as HTMLStyleElement | null;
-                        if (!styleEl) { styleEl = iframeDoc.createElement('style'); styleEl.id = styleId; iframeDoc.head.appendChild(styleEl); }
-                        const cssContent = `...`;
-                        if (styleEl.textContent !== cssContent) styleEl.textContent = cssContent;
-
-                        setIsLoading(false);
-                        applyFont();
-                    } else {
-                        console.warn("Iframe body or html element not found during load.");
-                        setIsLoading(false);
-                        onSizeChange(iframeWidth, MIN_HEIGHT);
-                    }
-                } catch (e) {
-                    console.error("Error during iframe load handling:", e);
-                    setIsLoading(false);
-                    onSizeChange(iframeWidth, MIN_HEIGHT);
-                }
-            });
-        };
-
-        onSizeChange(iframeWidth, MIN_HEIGHT);
-        setIframeHeight(MIN_HEIGHT);
-
-        iframe.addEventListener('load', handleLoad);
-        iframe.srcdoc = htmlContent || "<!DOCTYPE html><html><head><title>Empty</title></head><body><p>No content</p></body></html>";
-
-        return () => {
-            isMounted = false;
-            iframe?.removeEventListener('load', handleLoad);
-        };
-    }, [htmlContent, iframeWidth, onSizeChange, applyFont]);
-
-    useEffect(() => {
-        applyFont();
-    }, [applyFont]);
-
-    useEffect(() => {
-        if (!iframeRef.current?.contentDocument || isLoading) return;
-        const iframeDoc = iframeRef.current.contentDocument;
-        const CLICKED_CLASS = 'clicked-highlight';
-
-        let elementToHighlight: HTMLElement | null = null;
-
-        if (selectedSectionId && currentMode === 'section') {
-            elementToHighlight = iframeDoc.getElementById(selectedSectionId);
-        } else if (selectedContentElement && currentMode === 'content') {
-            const contentId = selectedContentElement.dataset.contentId;
-            if (contentId) {
-                elementToHighlight = iframeDoc.querySelector(`[data-content-id="${contentId}"]`);
-            }
-            if (!elementToHighlight && iframeDoc.body.contains(selectedContentElement)) {
-                elementToHighlight = selectedContentElement;
-            }
-        }
-
-        if (elementToHighlight) {
-            elementToHighlight.classList.add(CLICKED_CLASS);
-        }
-    }, [selectedSectionId, selectedContentElement, currentMode, isLoading, htmlContent]);
-
-    const toggleMode = (modeToSet: InteractionMode) => {
-        setCurrentMode(prevMode => {
-            const nextMode = prevMode === modeToSet ? 'none' : modeToSet;
-            setSelectedSectionId(null);
-            setSelectedContentElement(null);
-            return nextMode;
-        });
-    };
-
-    const handleResizeToggle = useCallback(() => {
-        const newWidth = iframeWidth === DEFAULT_WIDTH ? 390 : DEFAULT_WIDTH;
-        setIframeWidth(newWidth);
-        onSizeChange(newWidth, iframeHeight);
-    }, [iframeWidth, iframeHeight, onSizeChange]);
-
-    const handleEditDesign = useCallback(() => {
-        console.log("Edit whole design clicked");
-    }, []);
-
-    const portalTarget = canvasContentRef.current;
-
-    return (
-        <>
-            <div className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200" style={{ width: `${iframeWidth}px`, position: 'relative', transition: 'width 0.3s ease-in-out' }}>
-                <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 bg-gray-900 min-h-[44px] sticky top-0 z-20">
-                    <div className="flex items-center gap-2 flex-grow mr-4 min-w-0">
-                        <Grab size={16} className="text-gray-400 cursor-grab flex-shrink-0" />
-                        <p className="text-sm font-medium text-gray-700 truncate" title={title}>{title}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <ToolbarButton icon={ArrowLeftRight} tooltip={`Resize (${iframeWidth === DEFAULT_WIDTH ? 'Mobile' : 'Desktop'})`} onClick={handleResizeToggle} />
-                        {onDelete && <ToolbarButton icon={Trash2} tooltip="Delete Wireframe" onClick={onDelete} className="hover:bg-red-100 hover:text-red-700 hover:border-red-300" />}
-                    </div>
-                </div>
-                <div className="relative preview-element border-t-0 overflow-hidden" style={{ height: `${iframeHeight}px`, width: '100%', transition: 'height 0.2s ease-out' }}>
-                    <iframe
-                        ref={iframeRef}
-                        title={`preview-${title}`}
-                        sandbox="allow-scripts allow-same-origin"
-                        scrolling="no"
-                        className="block w-full h-full border-none"
-                        style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 0.3s ease-in-out' }}
-                        width={iframeWidth}
-                        height={iframeHeight}
-                    />
-                    {isLoading && <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div></div>}
-                    {!isLoading && (
-                        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2 pointer-events-none opacity-80">
-                            {currentMode === 'section' && <span className={`px-3 py-1 rounded-full text-[11px] shadow transition-colors ${selectedSectionId ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'}`}>{selectedSectionId ? 'Section Selected' : 'Select Section'}</span>}
-                            {currentMode === 'content' && <span className={`px-3 py-1 rounded-full text-[11px] shadow transition-colors ${selectedContentElement ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}>{selectedContentElement ? 'Content Selected' : 'Select Content'}</span>}
-                        </div>
-                    )}
-                    <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-1 px-2 flex justify-center items-center">
-                        <Menubar>
-                            <MenubarMenu>
-                                <MenubarTrigger className="p-2 hover:bg-gray-100 rounded-md">
-                                    <Sliders size={16} strokeWidth={1.75} />
-                                </MenubarTrigger>
-                                <MenubarContent>
-                                    <MenubarItem onClick={() => toggleMode('content')}>
-                                        <Edit3 size={14} className="mr-2" />
-                                        Edit Content
-                                    </MenubarItem>
-                                    <MenubarItem onClick={() => toggleMode('section')}>
-                                        <Target size={14} className="mr-2" />
-                                        Edit Section
-                                    </MenubarItem>
-                                    <MenubarItem onClick={handleEditDesign}>
-                                        <Pencil size={14} className="mr-2" />
-                                        Edit Design
-                                    </MenubarItem>
-                                    <MenubarSeparator />
-                                    <MenubarItem className="p-2">
-                                        <FontSelector
-                                            selectedFont={selectedFont}
-                                            onFontChange={handleFontChange}
-                                            availableFonts={availableFonts}
-                                        />
-                                    </MenubarItem>
-                                </MenubarContent>
-                            </MenubarMenu>
-                        </Menubar>
-                    </div>
-                </div>
-            </div>
-
-            {portalTarget && createPortal((hoveredSection && !selectedSectionId && currentMode === 'section' && !isLoading) &&
-                <div style={getSectionButtonPosition(hoveredSection)} className="absolute z-50 interaction-button-portal" onMouseEnter={handleSectionButtonEnter} onMouseLeave={handleSectionButtonLeave}>
-                    <button onClick={(e) => { e.stopPropagation(); handleSectionButtonClick(hoveredSection); }} className="flex items-center px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-150 ease-in-out transform hover:scale-105 whitespace-nowrap"><Star size={12} className="mr-1.5 fill-current" />Regenerate Section</button>
-                </div>, portalTarget)}
-            {portalTarget && createPortal((hoveredContent && !selectedContentElement && currentMode === 'content' && !isLoading) &&
-                <div style={getContentButtonPosition(hoveredContent)} className="absolute z-50 flex items-center space-x-2 interaction-button-portal" onMouseEnter={handleContentButtonEnter} onMouseLeave={handleContentButtonLeave}>
-                    {hoveredContent.tagName !== 'img' && <button onClick={(e) => { e.stopPropagation(); handleContentActionClick(hoveredContent, 'edit-content'); }} className="flex items-center px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded shadow-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all duration-150 ease-in-out transform hover:scale-105 whitespace-nowrap"><Pencil size={12} className="mr-1.5" />Edit Content</button>}
-                    <button onClick={(e) => { e.stopPropagation(); handleContentActionClick(hoveredContent, 'ask-ai'); }} className="flex items-center px-3 py-1.5 bg-sky-600 text-white text-xs font-semibold rounded shadow-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all duration-150 ease-in-out transform hover:scale-105 whitespace-nowrap"><Bot size={12} className="mr-1.5" />Ask AI</button>
-                </div>, portalTarget)}
-        </>
-    );
-};
-
-export default WireframeRenderer;
+export {
+  DropdownMenu,
+  DropdownMenuPortal,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+}

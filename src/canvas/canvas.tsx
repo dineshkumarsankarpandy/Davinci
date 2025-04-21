@@ -1,23 +1,42 @@
 // src/components/CanvasApp.tsx
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { ReactInfiniteCanvas, ReactInfiniteCanvasHandle } from 'react-infinite-canvas';
-import SideNavbar from '../sidebar'; // Adjust path
+import toast from 'react-hot-toast';
+import { useParams, useLocation } from 'react-router-dom';
+
+import SideNavbar from '../sidebar';
 import WebsiteDisplay from './websiteDisplay';
 import WebsiteGroup from './websiteGroup';
-import RegenerateModal from '../modal/regenerateModel'; // Adjust path
-import EditContentModal from '../modal/EditContentModal'; // Adjust path
-import AskAIModal from '../modal/askAIModal'; // Adjust path
+import RegenerateModal from '../modal/regenerateModel';
+import EditContentModal from '../modal/EditContentModal';
+import AskAIModal from '../modal/askAIModal';
 import LoadingOverlay from './loadingOverlay';
-import ApiService from '../services/apiService'; // Adjust path
+import ApiService from '../services/apiService';
 import {
   CanvasTransformState,
   WebsiteData,
   RegenerateModalState,
   EditContentModalState,
   AskAIModalState,
-  SectionInfo
-} from '../types/type'; // Adjust path
-import { ContentHighlightInfo, ContentActionType } from '../useContentHighlights'; // Adjust path
+  SectionInfo,
+  CanvasLoadResponse,
+  GroupRead,
+  ScreenRead,
+  ScreenVersionRead,
+  CanvasSaveRequest,
+  // GroupSaveData,
+  PositionData ,
+  ScreenSaveData
+} from '../types/type';
+import { getErrorMessage } from '@/lib/errorHandling';
+import { ContentHighlightInfo, ContentActionType } from '../useContentHighlights';
+import { Button } from '@/components/ui/button';
+import { parse_title_and_version } from '@/lib/utils';
+import {  PanelRightClose  } from 'lucide-react';
+
+interface GroupBounds {
+  x: number; y: number; width: number; height: number;
+}
 
 // Constants
 const DEFAULT_WEBSITE_WIDTH = 1440;
@@ -28,6 +47,12 @@ const HORIZONTAL_GROUP_SPACING = 80;
 const HORIZONTAL_VERSION_SPACING = 200;
 
 const CanvasApp: React.FC = () => {
+
+  const { projectId } = useParams<{ projectId: string }>();
+  const location = useLocation();
+  const isNewProject = location.state?.isNewProject;
+
+
   // --- Refs and State ---
   const canvasRef = useRef<ReactInfiniteCanvasHandle>(null);
   const canvasContentRef = useRef<HTMLDivElement>(null);
@@ -39,6 +64,9 @@ const CanvasApp: React.FC = () => {
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [canvasTransform, setCanvasTransform] = useState<CanvasTransformState>({ k: 1, x: 0, y: 0 });
   const [websiteSizes, setWebsiteSizes] = useState<Record<string, { width: number, height: number }>>({});
+  // const groupBoundsRef = useRef<Record<string, GroupBounds>>({});
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+
   const [regenerateModal, setRegenerateModal] = useState<RegenerateModalState>({
     isOpen: false, websiteId: null, sectionInfo: null
   });
@@ -200,8 +228,8 @@ const CanvasApp: React.FC = () => {
         const allPageNames = pages;
         const htmlPages = await ApiService.generateMultipleWebsites(prompt, allPageNames);
 
-        if (htmlPages.length !== allPageNames.length) {
-          throw new Error(`API returned ${htmlPages.length} pages, but ${allPageNames.length} were requested.`);
+        if (htmlPages.html_pages.length !== allPageNames.length) {
+          throw new Error(`API returned ${htmlPages.html_pages.length} pages, but ${allPageNames.length} were requested.`);
         }
 
         const newGroupId = `flow-${Date.now()}`;
@@ -209,7 +237,7 @@ const CanvasApp: React.FC = () => {
         let currentX = HORIZONTAL_PLACEMENT_X;
 
         allPageNames.forEach((pageName, index) => {
-          const pageHtml = htmlPages[index];
+          const pageHtml = htmlPages.html_pages[index];
           const websiteId = `web-${newGroupId}-${index}`;
           const newWebsite: WebsiteData = {
             id: websiteId,
@@ -479,7 +507,7 @@ const CanvasApp: React.FC = () => {
 
     try {
       const data = await ApiService.processWithAI(contentInfo.textContent || '', aiAction);
-      if (!data.processed_text) throw new Error("API returned no processed text.");
+      if (!data.text) throw new Error("API returned no processed text.");
 
       setGeneratedWebsites(prev => prev.map(site => {
         if (site.id === websiteId) {
@@ -491,7 +519,7 @@ const CanvasApp: React.FC = () => {
 
           let found = false;
           if (elementToModify instanceof HTMLElement) {
-            elementToModify.textContent = data.processed_text;
+            elementToModify.textContent = data.text;
             const finalHtml = `<!DOCTYPE html>${siteDoc.documentElement.outerHTML}`;
             console.log("AI Update via DOM manipulation (data-content-id)");
             found = true;
@@ -503,7 +531,7 @@ const CanvasApp: React.FC = () => {
               const tempDoc = tempParser.parseFromString(oldOuterHtml, 'text/html');
               const tempElement = tempDoc.body.firstChild as HTMLElement;
               if (tempElement?.nodeType === Node.ELEMENT_NODE) {
-                tempElement.textContent = data.processed_text;
+                tempElement.textContent = data.text;
                 const updatedElementHtml = tempElement.outerHTML;
                 const updatedHtmlString = site.htmlContent.replace(oldOuterHtml, updatedElementHtml);
                 found = true;
@@ -547,11 +575,11 @@ const CanvasApp: React.FC = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
-      <SideNavbar onGenerate={handleGenerateWebsite} isLoading={isLoading && !isUpdatingContent} error={error} />
+      <SideNavbar onGenerate={handleGenerateWebsite} isLoading={isLoading && !isUpdatingContent} error={error} onClose={() => setIsSidebarOpen(false)} />
       <main className="flex-grow relative overflow-hidden">
         <ReactInfiniteCanvas
           ref={canvasRef}
-          minZoom={0.15} maxZoom={4}
+          minZoom={0} maxZoom={4}
           scrollBarConfig={{
             renderScrollBar: true,
             startingPosition: { x: 0, y: 0 },

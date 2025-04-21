@@ -10,10 +10,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import axios from "axios";
 import toast, { Toaster } from 'react-hot-toast';
 import { useNavigate } from "react-router-dom";
-// import Loader from "./utils/loader";
+import apiClient from "@/services/api";
 
 export default function LoginForm() {
   const [mail, setEmail] = useState<string>("");
@@ -35,7 +34,7 @@ export default function LoginForm() {
     setIsLoading(true); 
 
     try {
-      const response = await axios.post("http://localhost:8000/auth/login", {
+      const response = await apiClient.post("/auth/login", {
         mail: mail,
         password: password,
       });

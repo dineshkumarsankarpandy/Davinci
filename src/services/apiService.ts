@@ -1,147 +1,166 @@
-import { GenerateResponse,RequestImagePayload } from "@/types/type";
-import axios from 'axios';
+import { GenerateResponse, RequestImagePayload, GenerateEnhancedPrompt,
+   RegenerateWebsiteContentText, GenerateMultiplePages,
+   ProjectResponse, CanvasSaveResponse, CanvasLoadResponse, CanvasSaveRequest } from "@/types/type";
+import apiClient from "./api";
 import { getErrorMessage } from "@/lib/errorHandling";
-const API_BASE_URL = "http://localhost:8000/";
 
 const ApiService = {
-  generateWebsite: async (prompt: string) => {
-    const response = await fetch(`${API_BASE_URL}canvas/generate-html`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
-    });
-    
-    if (!response.ok) {
-      const e = await response.text();
-      throw new Error(`HTTP ${response.status}: ${e}`);
+  generateWebsite: async (prompt: string): Promise<GenerateResponse> => {
+    try {
+      const response = await apiClient.post<GenerateResponse>("/canvas/generate-html", { prompt });
+      return response.data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error));
     }
-    
-    return await response.json();
   },
-  
-  generateMultipleWebsites: async (prompt: string, pages: string[]) => {
-    const response = await fetch(`${API_BASE_URL}canvas/generate-multiple-html`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, pages }),
-    });
-    
-    if (!response.ok) {
-      const e = await response.text();
-      throw new Error(`HTTP ${response.status}: ${e}`);
+
+  generateMultipleWebsites: async (prompt: string, pages: string[]): Promise<GenerateMultiplePages> => {
+    try {
+      const response = await apiClient.post<GenerateMultiplePages>("/canvas/generate-multiple-html", {
+        prompt,
+        pages,
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error));
     }
-    
-    const data = await response.json();
-    return data.html_pages; 
   },
-  
+
   regenerateSection: async (fullHtml: string, outerHtml: string, prompt: string) => {
-    const response = await fetch(`${API_BASE_URL}canvas/regenerate-section`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    try {
+      const response = await apiClient.post<{ updated_html: string }>("/canvas/regenerate-section", {
         fullHtml: fullHtml,
         outerHtml: outerHtml,
         prompt: prompt,
-      }),
-    });
-    
-    if (!response.ok) {
-      const e = await response.text();
-      throw new Error(`API ${response.status}: ${e}`);
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error));
     }
-    
-    return await response.json();
   },
-  
-  processWithAI: async (text: string, action: string) => {
-    const response = await fetch(`${API_BASE_URL}canvas/regenerate-text`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+
+  processWithAI: async (text: string, action: string): Promise<RegenerateWebsiteContentText> => {
+    try {
+      const response = await apiClient.post<RegenerateWebsiteContentText>("/canvas/regenerate-text", {
         text: text,
         action: action,
-      }),
-    });
-    
-    if (!response.ok) {
-      const e = await response.text();
-      throw new Error(`API ${response.status}: ${e}`);
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error));
     }
-    
-    return await response.json();
   },
-  
-  generateFlow: async (prompt: string): Promise<string[]> => {
-    const response = await fetch(`${API_BASE_URL}canvas/generate-flow`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
-    });
 
-    if (!response.ok) {
-      const e = await response.text();
-      throw new Error(`Flow Generation Error ${response.status}: ${e}`);
-    }
-    const data: { page_names: string } = await response.json();
+  generateFlow: async (prompt: string): Promise<string[]> => {
     try {
-      const parsedPageNames = JSON.parse(data.page_names);
-      if (Array.isArray(parsedPageNames) && parsedPageNames.every(item => typeof item === 'string')) {
-        return parsedPageNames as string[];
-      } else {
-        console.error("Parsed page names is not a string array:", parsedPageNames);
-        throw new Error("API returned invalid page names format.");
+      const response = await apiClient.post<{ page_names: string }>("/canvas/generate-flow", { prompt });
+      const data = response.data;
+
+      try {
+        const parsedPageNames = JSON.parse(data.page_names);
+        if (Array.isArray(parsedPageNames) && parsedPageNames.every((item) => typeof item === "string")) {
+          return parsedPageNames as string[];
+        } else {
+          console.error("Parsed page names is not a string array:", parsedPageNames);
+          throw new Error("API returned invalid page names format.");
+        }
+      } catch (parseError) {
+        console.error("Error parsing page_names string from API:", data.page_names, parseError);
+        throw new Error("Failed to parse page names received from API.");
       }
-    } catch (parseError) {
-      console.error("Error parsing page_names string from API:", data.page_names, parseError);
-      throw new Error("Failed to parse page names received from API.");
+    } catch (error) {
+      throw new Error(getErrorMessage(error));
     }
   },
-  
 
   generateHtmlFromImage: async (prompt: string, base64Str: string): Promise<GenerateResponse> => {
     const payload: RequestImagePayload = { prompt, base64Str };
-    const response = await fetch(`${API_BASE_URL}canvas/generate-html-from-image`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const e = await response.text();
-      throw new Error(`Image Gen HTTP ${response.status}: ${e}`);
+    try {
+      const response = await apiClient.post<GenerateResponse>("/canvas/generate-html-from-image", payload);
+      return response.data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error));
     }
-    return await response.json();
   },
 
-  enhancedPrompt: async (prompt:string) =>{
-    const payload ={
-      prompt
+  enhancedPrompt: async (prompt: string): Promise<GenerateEnhancedPrompt> => {
+    try {
+      const response = await apiClient.post<GenerateEnhancedPrompt>("/canvas/enhance-prompt", { prompt });
+      return response.data;
+    } catch (err) {
+      throw new Error(getErrorMessage(err));
     }
-    const response = await fetch(`${API_BASE_URL}canvas/enhance-prompt`, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(payload)
-    });
-    if(!response.ok) {
-      const err = await response.text()
-      throw new Error(`Error during enhancing the prompt: ${err} `);
-    }
-    return await response.json()
   },
 
-  regenerateDesign: async (prompt: string, htmlContent:string): Promise<GenerateResponse> =>{
-    try{
-      const response = await axios .post<GenerateResponse>(`${API_BASE_URL}canvas/regenerate-design`,{
+
+  regenerateDesign: async (prompt: string, htmlContent: string): Promise<GenerateResponse> => {
+    try {
+      const response = await apiClient.post<GenerateResponse>("/canvas/regenerate-design", {
         prompt,
-        htmlContent
+        htmlContent,
       });
-      return response.data
+      return response.data;
+    } catch (err) {
+      throw new Error(getErrorMessage(err));
     }
-    catch(err){
-       throw new Error(getErrorMessage(err));
-    }
+  },
 
-  }
+  createProject: async (projectName: string): Promise<ProjectResponse> => {
+    try {
+      const response = await apiClient.post('/projects/', { name: projectName });
+      return response.data;
+    } catch (error) {
+      console.error("API Error creating project:", error);
+      throw new Error(getErrorMessage(error));
+    }
+  },
+
+  getAllProjects: async (): Promise<ProjectResponse[]> =>{
+        try{
+            const response = await apiClient.get<ProjectResponse[]>('/projects/get-all-projects')
+            return response.data;
+        }
+        catch(err){
+          console.error("API Error fetching projects:", err);
+          throw new Error(getErrorMessage(err));
+        }
+  },
+
+  getProjectById: async (projectId: number | string): Promise<ProjectResponse> => {
+    try {
+      const response = await apiClient.get<ProjectResponse>(`/projects/get-project-name/${projectId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`API Error fetching project ${projectId}:`, error);
+      throw new Error(getErrorMessage(error));
+    }
+  },
+
+  saveCanvasState: async (projectId: number | string, payload: CanvasSaveRequest): Promise<CanvasSaveResponse> => {
+    try {
+      const response = await apiClient.put<CanvasSaveResponse>(`/canvas/save-changes/${projectId}`, payload);
+      return response.data;
+    } catch (error) {
+      console.error(`API Error saving canvas state for project ${projectId}:`, error);
+      throw new Error(getErrorMessage(error));
+    }
+  },
+
+
+  getCanvasState: async (projectId: number | string): Promise<CanvasLoadResponse> => {
+    try {
+        const response = await apiClient.get<CanvasLoadResponse>(`/projects/get-projects/${projectId}`);
+        return response.data;
+    } catch (error) {
+        console.error(`API Error fetching canvas state for project ${projectId}:`, error);
+        if (!(error as any).response || (error as any).response.status !== 401) {
+            throw new Error(getErrorMessage(error));
+        }
+        throw error;
+    }
+},
+
+
 };
+
 export default ApiService;

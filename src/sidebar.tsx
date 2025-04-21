@@ -1,6 +1,6 @@
 // src/components/sidebar.tsx
 import React, { useState, useRef } from 'react';
-import { Send, AlertTriangle, Loader2, Plus, X, Sparkles, Trash2, Image as ImageIcon, WandSparkles, Expand } from 'lucide-react';
+import { Send, AlertTriangle, Loader2, Plus, X, Sparkles, Trash2, Image as ImageIcon, WandSparkles, Expand, Smartphone, Monitor, Tablet } from 'lucide-react';
 import ApiService from './services/apiService';
 import { getErrorMessage } from './lib/errorHandling';
 import { Button } from '@/components/ui/button';
@@ -14,16 +14,23 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import MarkdownEditorDialog from './promptMarkdownDialog'; 
 import { fileToBase64 } from './lib/utils';
+import { 
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from "@/components/ui/select";
 
 interface SideNavbarProps {
-    onGenerate: (prompt: string, pages: string[], base64Image?: string | null) => Promise<void>;
+    onGenerate: (prompt: string, pages: string[], base64Image?: string | null, deviceType?: string) => Promise<void>;
     isLoading: boolean;
     error: string | null;
+    onClose: () => void;
 }
 
 const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error }) => {
     const [prompt, setPrompt] = useState<string>('');
-    const [isFormOpen, setIsFormOpen] = useState<boolean>(true); // Default to open maybe?
     const [pages, setPages] = useState<string[]>([]);
     const [newPageName, setNewPageName] = useState<string>('');
     const [isAutoFlowLoading, setIsAutoFlowLoading] = useState<boolean>(false);
@@ -34,6 +41,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
     const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
     const [referenceImageBase64, setReferenceImageBase64] = useState<string | null>(null);
     const [hasFlowGenerated, setHasFlowGenerated] = useState<boolean>(false);
+    const [deviceType, setDeviceType] = useState<string>("desktop");
     const fileInputRef = useRef<HTMLInputElement>(null);
     
     // Add state for the markdown editor dialog
@@ -42,10 +50,10 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
     const handleMainSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (prompt.trim() && !isLoading) {
-            setFlowError(null);
-            onGenerate(prompt, pages, referenceImageBase64);
+          setFlowError(null);
+          onGenerate(prompt, pages, referenceImageBase64, deviceType);
         }
-    };
+      };
 
     const toggleTextareaExpand = () => {        
         setIsMarkdownDialogOpen(true);
@@ -164,36 +172,11 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
 
     return (
         <div className="h-screen flex">
-            {/* Navbar */}
-            <nav className="w-16 bg-gray-800 flex flex-col items-center py-4 shadow-lg z-20 shrink-0">
-                <div className="text-white mb-6">
-                    <h1 className="text-lg font-semibold">SDK</h1>
-                </div>
-                <Button
-                    onClick={() => setIsFormOpen(true)}
-                    variant="ghost"
-                    size="icon"
-                    className="text-gray-300 hover:text-white hover:bg-gray-700"
-                    title="Create New Design"
-                >
-                    <Plus size={24} />
-                </Button>
-            </nav>
-
-            {isFormOpen && (
+         
                 <Card className="w-80 border-r border-gray-200 flex flex-col shadow-lg z-10 rounded-none">
                     <CardHeader className="px-4 py-3 sticky top-0 bg-white z-10 border-b">
-                        <div className="flex items-center justify-between">
                             <CardTitle className="text-lg font-semibold text-gray-800">New Design</CardTitle>
-                            <Button
-                                onClick={() => setIsFormOpen(false)}
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                            >
-                                <X size={18} />
-                            </Button>
-                        </div>
+                    
                     </CardHeader>
 
                     <ScrollArea className="flex-grow">
@@ -289,6 +272,41 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
 
                                 <Separator />
 
+                                {/* Device Type Selector */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="device-type">Device Type</Label>
+                                    <Select 
+                                        value={deviceType} 
+                                        onValueChange={setDeviceType}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Select device type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="desktop">
+                                                <div className="flex items-center">
+                                                    <Monitor className="h-4 w-4 mr-2" />
+                                                    <span>Desktop</span>
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="mobile">
+                                                <div className="flex items-center">
+                                                    <Smartphone className="h-4 w-4 mr-2" />
+                                                    <span>Mobile</span>
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="tablet">
+                                                <div className="flex items-center">
+                                                    <Tablet className="h-4 w-4 mr-2" />
+                                                    <span>Tablet</span>
+                                                </div>
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <Separator />
+
                                 {/* Design Flow Section - Disable if image is selected? */}
                                 <div className={`space-y-3 ${referenceImageBase64 ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                 <div className="flex items-center justify-between">
@@ -361,7 +379,6 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                                         <div className="space-y-2">
                                             <Label className="text-xs">Added Pages:</Label>
                                             <ScrollArea className="h-40 border rounded-md">
-                                                {/* ... (Page list unchanged) ... */}
                                                 <ul className="divide-y divide-gray-100">
                                                     {pages.map((page, index) => (
                                                         <li key={`${page}-${index}`} className="flex items-center justify-between p-2 text-sm">
@@ -417,11 +434,11 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                     </ScrollArea>
 
                     <CardFooter className="p-4 bg-gray-50 border-t">
-                        {/* ... (Card Footer unchanged) ... */}
                         <div className="w-full">
                             <h3 className="text-sm font-medium text-gray-700 mb-2">Tips</h3>
                             <ul className="text-xs text-gray-600 space-y-1">
                                 <li>• Describe the desired output in the context box.</li>
+                                <li>• Select the target device type for your design.</li>
                                 <li>• Optionally add a reference image for visual guidance (generates a single page).</li>
                                 <li>• Optionally define a multi-page flow (if no image is used).</li>
                                 <li>• "Generate" uses context + image (if present) or context + flow.</li>
@@ -429,7 +446,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                         </div>
                     </CardFooter>
                 </Card>
-            )}
+            {/* )} */}
             
             {/* Markdown Editor Dialog */}
             <MarkdownEditorDialog
