@@ -190,6 +190,16 @@ export interface CanvasLoadResponse {
 }
 
 
+export interface DesignReviewRequest {
+  prompt: string;
+  base64Str: string;
+
+}
+
+export interface DesignReviewResponse{
+  text: string;
+}
+
 
 
 

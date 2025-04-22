@@ -1,6 +1,8 @@
 import { GenerateResponse, RequestImagePayload, GenerateEnhancedPrompt,
    RegenerateWebsiteContentText, GenerateMultiplePages,
-   ProjectResponse, CanvasSaveResponse, CanvasLoadResponse, CanvasSaveRequest } from "@/types/type";
+   ProjectResponse, CanvasSaveResponse, CanvasLoadResponse, CanvasSaveRequest, 
+   DesignReviewResponse,
+   DesignReviewRequest} from "@/types/type";
 import apiClient from "./api";
 import { getErrorMessage } from "@/lib/errorHandling";
 
@@ -160,6 +162,17 @@ const ApiService = {
     }
 },
 
+startReveiw: async (payload: DesignReviewRequest): Promise<DesignReviewResponse> => {
+
+  try{
+    const response = await apiClient.post<DesignReviewResponse>('/review-design/generate-review', payload);
+    return response.data;
+  }
+  catch(error){
+    console.error("API Error during design review:", error);
+    throw new Error(getErrorMessage(error));
+  }
+},
 
 };
 
