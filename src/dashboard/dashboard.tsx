@@ -1,6 +1,6 @@
 // src/components/Dashboard.tsx
-import  { useState, useEffect } from 'react';
-import { useNavigate, Link  } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,31 +12,32 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from 'lucide-react';
+import { Loader2, Search, Calendar, Clock } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { formatDate } from '@/lib/utils';
 import ApiService from '../services/apiService';
-import { getErrorMessage } from '../lib/errorHandling'; 
-import { ProjectResponse } from '@/types/type'; 
+import { getErrorMessage } from '../lib/errorHandling';
+import { ProjectResponse } from '@/types/type';
 import { Sidebar } from './sidebar';
-
-
 
 export function Dashboard() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [projects, setProjects] = useState<ProjectResponse[]>([]);
+  const [filteredProjects, setFilteredProjects] = useState<ProjectResponse[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [projectsError, setProjectsError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [displayLimit, setDisplayLimit] = useState(10);
   const navigate = useNavigate();
 
-
-
+  // Fetch projects
   useEffect(() => {
     const fetchProjects = async () => {
       setIsLoadingProjects(true);
@@ -44,11 +45,12 @@ export function Dashboard() {
       try {
         const fetchedProjects = await ApiService.getAllProjects();
         setProjects(fetchedProjects);
+        setFilteredProjects(fetchedProjects);
       } catch (error) {
         const message = getErrorMessage(error);
         setProjectsError(message);
-        if (error instanceof Error && 'response' in error && error.response!== 401) {
-           toast.error(`Failed to load projects: ${message}`);
+        if (error instanceof Error && 'response' in error && error.response !== 401) {
+          toast.error(`Failed to load projects: ${message}`);
         }
         console.error("Failed to fetch projects:", error);
       } finally {
@@ -56,9 +58,34 @@ export function Dashboard() {
       }
     };
     fetchProjects();
-}, [])
+  }, []);
 
+  // Filter projects based on search query
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredProjects(projects);
+    } else {
+      const lowercaseQuery = searchQuery.toLowerCase();
+      const filtered = projects.filter(project => 
+        project.name.toLowerCase().includes(lowercaseQuery)
+      );
+      setFilteredProjects(filtered);
+    }
+    setDisplayLimit(10); // Reset display limit when search changes
+  }, [searchQuery, projects]);
 
+  // Load more projects
+  const loadMore = useCallback(() => {
+    setDisplayLimit(prevLimit => prevLimit + 10);
+  }, []);
+
+  // Handle scroll for lazy loading
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop <= clientHeight * 1.5 && filteredProjects.length > displayLimit) {
+      loadMore();
+    }
+  }, [filteredProjects.length, displayLimit, loadMore]);
 
   const handleCreateProject = async () => {
     const token = localStorage.getItem("access_token");
@@ -76,7 +103,7 @@ export function Dashboard() {
     }
     setCreateError(null);
     setIsCreating(true);
-    const loadingToastId = toast.loading('Creating project...'); 
+    const loadingToastId = toast.loading('Creating project...');
 
     try {
       const newProject: ProjectResponse = await ApiService.createProject(projectName);
@@ -86,35 +113,33 @@ export function Dashboard() {
         toast.success(`Project "${projectName}" created! Redirecting...`, { id: loadingToastId });
         setIsDialogOpen(false);
         setProjectName('');
-        navigate(`/canvas/${newProject.id}`,{state:{isNewProject:true}});
-      }else{
-        toast.error("Project created, but failed to get ID for redirection.", { id: loadingToastId});
+        navigate(`/canvas/${newProject.id}`, { state: { isNewProject: true } });
+      } else {
+        toast.error("Project created, but failed to get ID for redirection.", { id: loadingToastId });
         setIsDialogOpen(false);
         setProjectName('');
       }
-    } 
-    
-    catch (error) {
+    } catch (error) {
       const message = getErrorMessage(error);
-      if (error instanceof Error && 'response' in error && error.response!== 401) {
+      if (error instanceof Error && 'response' in error && error.response !== 401) {
         setCreateError(message);
         toast.error(`Creation Failed: ${message}`, { id: loadingToastId });
         console.error("Failed to create project (non-401):", error);
-     } else {
-         toast.dismiss(loadingToastId);
-    } 
-    }finally {
+      } else {
+        toast.dismiss(loadingToastId);
+      }
+    } finally {
       setIsCreating(false);
     }
   };
 
   const handleOpenChange = (open: boolean) => {
-     setIsDialogOpen(open);
-     if (!open) {
-        setProjectName('');
-        setCreateError(null);
-        setIsCreating(false);
-     }
+    setIsDialogOpen(open);
+    if (!open) {
+      setProjectName('');
+      setCreateError(null);
+      setIsCreating(false);
+    }
   }
 
   return (
@@ -157,7 +182,6 @@ export function Dashboard() {
                     disabled={isCreating}
                   />
                 </div>
-             
               </div>
               <DialogFooter>
                 <Button
@@ -173,8 +197,19 @@ export function Dashboard() {
           {/* --- End Dialog --- */}
         </div>
 
-         {/* --- Project List Area --- */}
-         <div className="flex-grow"> {/* Allow this area to grow and scroll */}
+        {/* Search Bar */}
+        <div className="relative mb-6">
+          <Search className="absolute left-2 top-3 h-4 w-4 text-gray-500" />
+          <Input
+            placeholder="Search projects..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+
+        {/* --- Project List Area --- */}
+        <div className="flex-grow">
           <h2 className="text-xl font-semibold mb-4">Your Projects</h2>
           {isLoadingProjects && (
             <div className="flex justify-center items-center h-40">
@@ -187,48 +222,70 @@ export function Dashboard() {
               <p>Error loading projects: {projectsError}</p>
             </div>
           )}
-          {!isLoadingProjects && !projectsError && projects.length === 0 && (
+          {!isLoadingProjects && !projectsError && filteredProjects.length === 0 && (
             <div className="text-center text-gray-500 bg-gray-100 p-6 rounded">
-              <p>You haven't created any projects yet.</p>
-              <Button variant="link" onClick={() => setIsDialogOpen(true)} className="mt-2">
-                Create your first project
-              </Button>
+              {searchQuery ? (
+                <p>No projects match your search query.</p>
+              ) : (
+                <>
+                  <p>You haven't created any projects yet.</p>
+                  <Button variant="link" onClick={() => setIsDialogOpen(true)} className="mt-2">
+                    Create your first project
+                  </Button>
+                </>
+              )}
             </div>
           )}
-          {!isLoadingProjects && !projectsError && projects.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {projects.map((project) => (
-                <Card key={project.id} className="flex flex-col justify-between">
-                  <CardHeader>
-                    <CardTitle className=" text-xl truncate hover:text-clip" title={project.name}>
-                        {project.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-gray-500">
-                      Created: {formatDate(project.created_at)}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      last updated: {formatDate(project.created_at)}
-                    </p>
-
-                  </CardContent>
-                  <CardFooter>
-                    {/* Link to the canvas for this project */}
-                    <Link to={`/canvas/${project.id}`} className="w-full">
-                      <Button variant="outline" className="w-full cursor-pointer">
-                        Open Canvas
-                      </Button>
-                    </Link>
-                     {/* TODO: Add Edit/Delete buttons later */}
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+          {!isLoadingProjects && !projectsError && filteredProjects.length > 0 && (
+            <ScrollArea className="h-[calc(100vh-280px)]" onScrollCapture={handleScroll}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-1/2">Project Name</TableHead>
+                    <TableHead className="w-1/5">Created</TableHead>
+                    <TableHead className="w-1/5">Last Updated</TableHead>
+                    <TableHead className="w-1/10 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredProjects.slice(0, displayLimit).map((project) => (
+                    <TableRow key={project.id}>
+                      <TableCell className="font-medium">{project.name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <Calendar className="mr-2 h-4 w-4 text-gray-500" />
+                          {formatDate(project.created_at)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <Clock className="mr-2 h-4 w-4 text-gray-500" />
+                          {formatDate(project.created_at)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link to={`/canvas/${project.id}`}>
+                          <Button variant="outline" size="sm">
+                            Open Canvas
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {filteredProjects.length > displayLimit && (
+                <div className="flex justify-center my-4">
+                  <Button variant="ghost" onClick={loadMore} className="flex items-center">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading more...
+                  </Button>
+                </div>
+              )}
+            </ScrollArea>
           )}
         </div>
-      
-         {/* --- End Project List Area --- */}
+        {/* --- End Project List Area --- */}
       </div>
     </div>
   );

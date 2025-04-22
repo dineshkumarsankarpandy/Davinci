@@ -7,6 +7,7 @@ import { Layers, Eye, EyeOff } from 'lucide-react';
 
 interface WebsiteGroupProps {
   groupId: string;
+  groupName?: string;
   websites: WebsiteData[];
   activeWebsiteId: string | null;
   onActivateWebsite: (id: string) => void;
@@ -40,7 +41,8 @@ const WebsiteGroup: React.FC<WebsiteGroupProps> = ({
   onGroupSelect,
   onWebsiteSizeChange,
   initialWebsiteSizes,
-  onUpdateHtmlContent
+  onUpdateHtmlContent,
+  groupName,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const groupRef = useRef<HTMLDivElement>(null);
@@ -115,7 +117,7 @@ const WebsiteGroup: React.FC<WebsiteGroupProps> = ({
 
   const isFlowGroup = groupId.startsWith('flow-');
   const isVersionGroup = groupId.startsWith('version-group-');
-  const groupDisplayName = isFlowGroup
+  const groupDisplayName =  groupName|| isFlowGroup
       ? `Flow: ${groupId.replace('flow-', '').substring(0, 8)}...` 
       : isVersionGroup
       ? `Versions: ${groupId.replace('version-group-web-', '')}`
