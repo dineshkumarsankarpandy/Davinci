@@ -35,6 +35,7 @@ import { ContentHighlightInfo, ContentActionType } from '../useContentHighlights
 import { Button } from '@/components/ui/button';
 import { parse_title_and_version } from '@/lib/utils';
 import { Save, Loader2 } from 'lucide-react';
+import BottomBar from './bottomBar';
 
 
 interface GroupBounds {
@@ -90,6 +91,133 @@ const CanvasApp: React.FC = () => {
   //     canvasRef.current?.fitContentToView({  duration});
   //   }, 300);
   // }, []);
+
+
+
+  useEffect(() => {
+    setGeneratedWebsites([]);
+    setWebsiteSizes({});
+    setActiveGroupId(null);
+    setActiveWebsiteId(null);
+    setProjectName('');
+    setError(null);
+    setIsLoading(true);
+
+    if (!projectId) {
+      setError("No project ID provided.");
+      setIsLoading(false);
+      toast.error("Invalid project link.");
+      navigate('/dashboard');
+      return;
+    }
+
+    // --- Handle NEW Project ---
+    if (isNewProject) {
+      console.log(`Detected new project: ${projectId}. Skipping canvas load.`);
+      ApiService.getProjectById(projectId)
+        .then(data => {
+          setProjectName(data.name);
+          setIsLoading(false);
+        })
+        .catch(err => {
+          console.error("Error fetching project name for new project:", err);
+          setError(getErrorMessage(err));
+          setIsLoading(false);
+          toast.error("Failed to load project details.");
+        });
+      return;
+    }
+
+    // --- Handle EXISTING Project: Load State ---
+    const loadData = async () => {
+      console.log(`Loading existing project data for: ${projectId}`);
+      try {
+        const response = await ApiService.getCanvasState(projectId);
+        console.log("API Load Response:", response);
+        setProjectName(response.project_name); 
+
+        const loadedWebsites: WebsiteData[] = [];
+        const loadedSizes: Record<string, { width: number, height: number }> = {};
+
+        if (!response.groups || response.groups.length === 0) {
+           console.log("Project loaded with no groups/screens.");
+        } else {
+            response.groups.forEach(group => {
+                const groupFrontendId = group.metadata?.frontendId ?? `db-group-${group.id}`;
+
+                if (!group.screens || group.screens.length === 0) return;
+
+                group.screens.forEach(screen => {
+                    const baseScreenFrontendId = screen.metadata?.frontendId ?? `db-screen-${screen.id}`;
+                    const position = screen.metadata?.position ?? { x: Math.random() * 500 + 50, y: Math.random() * 500 + 50 };
+                    const size = screen.metadata?.size ?? { width: DEFAULT_WEBSITE_WIDTH, height: DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT };
+                    const pageName = screen.metadata?.pageName ?? null;
+                    const baseTitle = screen.title || `Screen ${screen.id}`;
+
+                    if (!screen.versions || screen.versions.length === 0) {
+                         console.warn(`Screen ${baseScreenFrontendId} (DB ID: ${screen.id}) has no versions. Skipping.`);
+                         return;
+                    }
+
+                    // --- Create WebsiteData for each Version ---
+                    screen.versions.forEach(version => {
+                      
+                      const versionFrontendId = version.version_number === 1 || version.version_number === 0
+                      ? baseScreenFrontendId // Version 1 (or 0 if used) IS the base ID
+                      : `${baseScreenFrontendId}-v${version.version_number}`; // Convention for v2+
+
+                  const versionedTitle = version.version_number === 1 || version.version_number === 0
+                      ? baseTitle // Base version doesn't get (v1) typically
+                      : `${baseTitle} (v${version.version_number})`;
+
+                        const website: WebsiteData = {
+                            id: versionFrontendId,
+                            title: versionedTitle,
+                            htmlContent: version.html_content || '<p>No content loaded</p>',
+                            position: { x: position.x, y: position.y },
+                            width: size.width,
+                            height: size.height,
+                            groupId: groupFrontendId, 
+                            pageName: pageName,     
+                            // _dbScreenId: screen.id,
+                            // _dbVersionId: version.id,
+                            // _dbBaseFrontendId: baseScreenFrontendId
+                        };
+                        loadedWebsites.push(website);
+                        loadedSizes[versionFrontendId] = { width: size.width, height: size.height };
+                    });
+                });
+            });
+        }
+
+        console.log("Transformed websites from load:", loadedWebsites);
+        setGeneratedWebsites(loadedWebsites);
+        setWebsiteSizes(loadedSizes);
+
+        // if (loadedWebsites.length > 0) {
+        //    fitContent(800);
+        // } else {
+        //    console.log("Canvas is empty for this project.");
+        // }
+
+      } catch (err: any) {
+        console.error("Error loading canvas state:", err);
+        const errorMsg = getErrorMessage(err);
+        setError(`Failed to load project: ${errorMsg}`);
+        if (err.response?.status === 404 || err.response?.status === 401) {
+          toast.error("Project not found or access denied.");
+          navigate('/dashboard');
+        } else {
+           toast.error(`Failed to load project: ${errorMsg}`);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData(); 
+
+  }, [projectId, isNewProject, navigate]); 
 
 
 
@@ -684,26 +812,26 @@ const CanvasApp: React.FC = () => {
           // --- Create Screen Payload ---
           const baseScreenSize = websiteSizes[baseScreenFrontendId] ?? { width: baseWebsiteData.width, height: baseWebsiteData.height };
           const screenData: ScreenSaveData = {
-            baseFrontendId: baseScreenFrontendId, // The ID of the logical base screen (often v0)
-            title: parse_title_and_version(baseWebsiteData.title)[0], // Title without version number
+            baseFrontendId: baseScreenFrontendId,
+            title: parse_title_and_version(baseWebsiteData.title)[0],
             position: { x: baseWebsiteData.position.x, y: baseWebsiteData.position.y },
             width: baseScreenSize.width ?? DEFAULT_WEBSITE_WIDTH,
             height: baseScreenSize.height ?? DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT,
             pageName: baseWebsiteData.pageName,
-            versions: allVersionsForThisBase, // Array of all related versions
+            versions: allVersionsForThisBase,
           };
 
           screensPayload.push(screenData);
-          processedBaseScreenIds.add(baseScreenFrontendId); // Mark this base screen as done for this group
+          processedBaseScreenIds.add(baseScreenFrontendId);
         }
 
 
         // --- Create Group Payload ---
         if (screensPayload.length > 0) {
           groupsPayload.push({
-            frontendId: groupId, // Use the conceptual group ID (flow-..., version-group-..., single-item-group-...)
-            name: groupName, // Use the derived name
-            position: groupPosition, // Use position of the first website in group
+            frontendId: groupId,
+            name: groupName,
+            position: groupPosition, 
             screens: screensPayload,
             // size: undefined // Add if you track group size
           });
@@ -714,7 +842,7 @@ const CanvasApp: React.FC = () => {
         groups: groupsPayload,
       };
 
-      console.log("Saving payload:", JSON.stringify(payload, null, 2)); // Debugging: Log the final payload
+      console.log("Saving payload:", JSON.stringify(payload, null, 2)); 
 
       // --- API Call ---
       const response = await ApiService.saveCanvasState(projectId, payload);
@@ -727,7 +855,7 @@ const CanvasApp: React.FC = () => {
       setError(`Failed to save project: ${errorMsg}`);
       toast.error(`Save failed: ${errorMsg}`, { id: saveToastId });
     } finally {
-      setIsSaving(false); // Reset saving state regardless of outcome
+      setIsSaving(false); 
     }
   };
   
@@ -814,6 +942,10 @@ const CanvasApp: React.FC = () => {
           </div>
           {/* </EventBlocker> */}
         </ReactInfiniteCanvas>
+        <BottomBar
+                canvasRef={canvasRef}
+                currentZoom={canvasTransform.k} // Pass the current zoom level 'k'
+            />
         <LoadingOverlay isLoading={isLoading && !isUpdatingContent} isUpdating={isUpdatingContent} progress={75} />
         {error && (
           <div className="absolute bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-md z-50 max-w-sm">
