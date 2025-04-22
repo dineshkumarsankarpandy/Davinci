@@ -2,10 +2,11 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { ReactInfiniteCanvas, ReactInfiniteCanvasHandle } from 'react-infinite-canvas';
 import toast from 'react-hot-toast';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, useNavigate  } from 'react-router-dom';
 
 import SideNavbar from '../sidebar';
 import WebsiteDisplay from './websiteDisplay';
+import TopBar from './topBar';
 import WebsiteGroup from './websiteGroup';
 import RegenerateModal from '../modal/regenerateModel';
 import EditContentModal from '../modal/EditContentModal';
@@ -24,15 +25,17 @@ import {
   ScreenRead,
   ScreenVersionRead,
   CanvasSaveRequest,
-  // GroupSaveData,
+  GroupSaveData,
   PositionData ,
-  ScreenSaveData
+  ScreenSaveData,
+  ScreenVersionSaveData
 } from '../types/type';
 import { getErrorMessage } from '@/lib/errorHandling';
 import { ContentHighlightInfo, ContentActionType } from '../useContentHighlights';
 import { Button } from '@/components/ui/button';
 import { parse_title_and_version } from '@/lib/utils';
-import {  PanelRightClose  } from 'lucide-react';
+import { Save, Loader2 } from 'lucide-react';
+
 
 interface GroupBounds {
   x: number; y: number; width: number; height: number;
@@ -51,6 +54,7 @@ const CanvasApp: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const location = useLocation();
   const isNewProject = location.state?.isNewProject;
+  const navigate = useNavigate();
 
 
   // --- Refs and State ---
@@ -58,6 +62,7 @@ const CanvasApp: React.FC = () => {
   const canvasContentRef = useRef<HTMLDivElement>(null);
   const [generatedWebsites, setGeneratedWebsites] = useState<WebsiteData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isUpdatingContent, setIsUpdatingContent] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [activeWebsiteId, setActiveWebsiteId] = useState<string | null>(null);
@@ -66,6 +71,7 @@ const CanvasApp: React.FC = () => {
   const [websiteSizes, setWebsiteSizes] = useState<Record<string, { width: number, height: number }>>({});
   // const groupBoundsRef = useRef<Record<string, GroupBounds>>({});
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [projectName, setProjectName] = useState<string>(''); 
 
   const [regenerateModal, setRegenerateModal] = useState<RegenerateModalState>({
     isOpen: false, websiteId: null, sectionInfo: null
@@ -84,6 +90,9 @@ const CanvasApp: React.FC = () => {
   //     canvasRef.current?.fitContentToView({  duration});
   //   }, 300);
   // }, []);
+
+
+
 
   const groupedWebsites = useCallback(() => {
     const explicitGroups: Record<string, WebsiteData[]> = {};
@@ -567,6 +576,160 @@ const CanvasApp: React.FC = () => {
   }, []);
 
 
+
+  const handleSaveCanvas = async () => {
+    if (!projectId) {
+        toast.error("Project ID is missing. Cannot save.");
+        return;
+    }
+    if (isSaving) {
+        toast("Already saving...", { icon: '⏳' });
+        return;
+    }
+    if (generatedWebsites.length === 0 && !isNewProject) { // Allow saving empty state for a non-new project
+      // If it's not a new project and has no websites, maybe we should clear the backend?
+      // Let's proceed to save an empty state for now. Backend logic handles clearing.
+       console.warn("Saving empty canvas state for existing project.");
+      // toast.error("Nothing to save. Generate some content first.");
+      // return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+    const saveToastId = toast.loading('Saving project...');
+
+    try {
+      console.log("Preparing canvas state for saving...");
+
+      const { grouped: allGroupsMap } = groupedWebsites();
+
+      const groupsPayload: GroupSaveData[] = [];
+
+      for (const [groupId, websitesInGroup] of Object.entries(allGroupsMap) as [string, WebsiteData[]][]) {
+        if (websitesInGroup.length === 0) continue;
+
+        const screensPayload: ScreenSaveData[] = [];
+        const processedBaseScreenIds = new Set<string>(); 
+
+        const firstWebsite = websitesInGroup[0]; // Use first item for position anchor
+        const groupPosition: PositionData = { x: firstWebsite.position.x, y: firstWebsite.position.y };
+        let groupName: string | null = null;
+        if (groupId.startsWith('flow-')) {
+          groupName = `Flow (${groupId.substring(5, 13)}...)`;
+        } else if (groupId.startsWith('version-group-')) {
+           const baseWebsite = generatedWebsites.find(w => w.id === groupId.replace('version-group-', ''));
+           groupName = `Versions of '${baseWebsite ? parse_title_and_version(baseWebsite.title)[0] : 'Unknown'}'`;
+        } else if (groupId.startsWith('single-item-group-')){
+        } else {
+            groupName = firstWebsite.groupId === groupId ? `Group: ${groupId}` : null; // Basic fallback
+        }
+
+
+        for (const website of websitesInGroup) {
+          const [baseTitle, versionNum] = parse_title_and_version(website.title);
+
+          let baseScreenFrontendId: string;
+          if (groupId.startsWith('version-group-')) {
+            baseScreenFrontendId = groupId.replace('version-group-', '');
+          } else if (groupId.startsWith('flow-') && versionNum !== null) {
+            const originalInFlow = websitesInGroup.find(w =>
+              w.groupId === groupId &&
+              w.pageName === website.pageName &&
+              parse_title_and_version(w.title)[1] === null // No version number
+            );
+            baseScreenFrontendId = originalInFlow ? originalInFlow.id : website.id; // Fallback to self if base not found
+          } else {
+            baseScreenFrontendId = website.id;
+          }
+
+          if (processedBaseScreenIds.has(baseScreenFrontendId)) {
+            continue;
+          }
+
+          const baseWebsiteData = generatedWebsites.find(w => w.id === baseScreenFrontendId);
+
+          if (!baseWebsiteData) {
+            console.warn(`Could not find base website data for base ID ${baseScreenFrontendId}. Skipping screen.`);
+            continue; 
+          }
+
+          const allVersionsForThisBase: ScreenVersionSaveData[] = generatedWebsites
+            .filter(w => {
+              const [wTitle, wVersion] = parse_title_and_version(w.title);
+
+              if (getWebsiteGroupId(w) !== groupId) return false;
+
+              if (groupId.startsWith('version-group-')) {
+                return true;
+              } else if (groupId.startsWith('flow-')) {
+                return w.pageName === baseWebsiteData.pageName;
+              } else if (groupId.startsWith('single-item-group-')) {
+                 return w.id === baseScreenFrontendId;
+              } else {
+                 return w.groupId === groupId && wTitle === parse_title_and_version(baseWebsiteData.title)[0];
+              }
+            })
+            .map(v => ({
+              id: v.id, 
+              title: v.title, 
+              htmlContent: v.htmlContent,
+            }));
+
+           allVersionsForThisBase.sort((a, b) => {
+               const vA = parse_title_and_version(a.title)[1] ?? 0;
+               const vB = parse_title_and_version(b.title)[1] ?? 0;
+               return vA - vB;
+           });
+
+          // --- Create Screen Payload ---
+          const baseScreenSize = websiteSizes[baseScreenFrontendId] ?? { width: baseWebsiteData.width, height: baseWebsiteData.height };
+          const screenData: ScreenSaveData = {
+            baseFrontendId: baseScreenFrontendId, // The ID of the logical base screen (often v0)
+            title: parse_title_and_version(baseWebsiteData.title)[0], // Title without version number
+            position: { x: baseWebsiteData.position.x, y: baseWebsiteData.position.y },
+            width: baseScreenSize.width ?? DEFAULT_WEBSITE_WIDTH,
+            height: baseScreenSize.height ?? DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT,
+            pageName: baseWebsiteData.pageName,
+            versions: allVersionsForThisBase, // Array of all related versions
+          };
+
+          screensPayload.push(screenData);
+          processedBaseScreenIds.add(baseScreenFrontendId); // Mark this base screen as done for this group
+        }
+
+
+        // --- Create Group Payload ---
+        if (screensPayload.length > 0) {
+          groupsPayload.push({
+            frontendId: groupId, // Use the conceptual group ID (flow-..., version-group-..., single-item-group-...)
+            name: groupName, // Use the derived name
+            position: groupPosition, // Use position of the first website in group
+            screens: screensPayload,
+            // size: undefined // Add if you track group size
+          });
+        }
+      }
+
+      const payload: CanvasSaveRequest = {
+        groups: groupsPayload,
+      };
+
+      console.log("Saving payload:", JSON.stringify(payload, null, 2)); // Debugging: Log the final payload
+
+      // --- API Call ---
+      const response = await ApiService.saveCanvasState(projectId, payload);
+      console.log("Save response:", response);
+      toast.success('Project saved successfully!', { id: saveToastId });
+
+    } catch (err: any) {
+      console.error("Save Error:", err);
+      const errorMsg = getErrorMessage(err);
+      setError(`Failed to save project: ${errorMsg}`);
+      toast.error(`Save failed: ${errorMsg}`, { id: saveToastId });
+    } finally {
+      setIsSaving(false); // Reset saving state regardless of outcome
+    }
+  };
   
 
 
@@ -575,8 +738,20 @@ const CanvasApp: React.FC = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
+             {isSidebarOpen && (
       <SideNavbar onGenerate={handleGenerateWebsite} isLoading={isLoading && !isUpdatingContent} error={error} onClose={() => setIsSidebarOpen(false)} />
+             )}
       <main className="flex-grow relative overflow-hidden">
+
+      <TopBar
+              projectName={projectName}
+              isSidebarOpen={isSidebarOpen}
+              toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+              onSave={handleSaveCanvas}
+              isSaving={isSaving}
+              canSave={!isLoading && !isSaving}
+           />
+
         <ReactInfiniteCanvas
           ref={canvasRef}
           minZoom={0} maxZoom={4}

@@ -69,6 +69,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
             setPages(prevPages => [...prevPages, newPageName.trim()]);
             setNewPageName('');
             setFlowError(null);
+        
         }
     };
 
