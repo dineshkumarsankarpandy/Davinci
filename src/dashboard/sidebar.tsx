@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, X, ChevronLeft, ChevronRight, Home, LayoutDashboard, Star } from 'lucide-react';
 import { ModeToggle } from './mode-toggle';
+import SubscriptionPlan from './subscriptionCard';
 
 interface SidebarProps {
   className?: string;
@@ -48,26 +49,19 @@ export function Sidebar({ className }: SidebarProps) {
     {
       title: 'Home',
       to: '/',
-      icon: <Home className="h-5 w-5" />,
+      icon: <Home className="h-5 w-5" />, 
       variant: 'default',
     },
     {
       title: 'Dashboard',
       to: '/dashboard',
-      icon: <LayoutDashboard className="h-5 w-5" />,
+      icon: <LayoutDashboard className="h-5 w-5" />, 
       variant: 'ghost',
     },
-    // {
-    //   title: 'Users',
-    //   to: '/users',
-    //   icon: <Users className="h-5 w-5" />,
-    //   variant: 'ghost',
-    //   label: '9',
-    // },
     {
       title: 'Review',
       to: '/review-design',
-      icon: <Star className="h-5 w-5" />,
+      icon: <Star className="h-5 w-5" />, 
       variant: 'ghost',
     },
   ];
@@ -96,11 +90,14 @@ export function Sidebar({ className }: SidebarProps) {
               </SheetTrigger>
             </div>
             <ScrollArea className="flex-1">
-              <SidebarNav
-                isCollapsed={false}
-                links={links}
-              />
+              <SidebarNav isCollapsed={false} links={links} />
             </ScrollArea>
+
+            {/* Subscription card for mobile */}
+            <div className="px-3">
+              <SubscriptionPlan />
+            </div>
+
             <div className="h-14 flex items-center justify-between px-3 border-t">
               <span className={cn("font-medium", !isCollapsed && "ml-3")}>
                 <ModeToggle />
@@ -120,23 +117,26 @@ export function Sidebar({ className }: SidebarProps) {
       >
         <div className={cn("h-16 flex items-center border-b px-4", 
           isCollapsed && "justify-center px-2")}>
-          {!isCollapsed && (
+          {!isCollapsed ? (
             <div className="flex items-center gap-x-2">
               <LayoutDashboard className="h-6 w-6" />
               <span className="font-bold text-lg">Dashboard</span>
             </div>
-          )}
-          {isCollapsed && (
+          ) : (
             <LayoutDashboard className="h-6 w-6" />
           )}
         </div>
 
         <div className="flex-1">
-          <SidebarNav
-            isCollapsed={isCollapsed}
-            links={links}
-          />
+          <SidebarNav isCollapsed={isCollapsed} links={links} />
         </div>
+
+        {/* Subscription card */}
+        {!isCollapsed && (
+          <div className="px-3 py-2">
+            <SubscriptionPlan />
+          </div>
+        )}
           
         {/* Bottom section with toggle */}
         <div className="h-14 flex items-center border-t px-3">
