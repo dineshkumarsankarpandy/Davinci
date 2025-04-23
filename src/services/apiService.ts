@@ -138,6 +138,15 @@ const ApiService = {
     }
   },
 
+  deleteProject: async (projectId: number | string): Promise<void> => {
+    try {
+      await apiClient.delete(`/projects/delete-project/${projectId}`);
+    } catch (error) {
+      console.error(`API Error deleting project ${projectId}:`, error);
+      throw new Error(getErrorMessage(error));
+    }
+  },
+
   saveCanvasState: async (projectId: number | string, payload: CanvasSaveRequest): Promise<CanvasSaveResponse> => {
     try {
       const response = await apiClient.put<CanvasSaveResponse>(`/canvas/save-changes/${projectId}`, payload);

@@ -1,4 +1,3 @@
-// src/components/sidebar.tsx
 import React, { useState, useRef } from 'react';
 import { Send, AlertTriangle, Loader2, Plus, X, Sparkles, Trash2, Image as ImageIcon, WandSparkles, Expand, Smartphone, Monitor, Tablet } from 'lucide-react';
 import ApiService from './services/apiService';
@@ -173,281 +172,279 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
 
     return (
         <div className="h-screen flex">
-         
-                <Card className="w-80 border-r border-gray-200 flex flex-col shadow-lg z-10 rounded-none">
-                    <CardHeader className="px-4 py-3 sticky top-0 bg-white z-10 border-b">
-                            <CardTitle className="text-lg font-semibold text-gray-800">New Design</CardTitle>
-                    
-                    </CardHeader>
+            <Card className="w-80 border-r border-gray-200 flex flex-col shadow-lg z-10 rounded-none h-full">
+                <CardHeader className="px-4 py-3 sticky top-0 bg-white z-10 border-b flex-shrink-0">
+                    <CardTitle className="text-lg font-semibold text-gray-800">New Design</CardTitle>
+                </CardHeader>
 
-                    <ScrollArea className="flex-grow">
-                        <CardContent className="p-4 space-y-6">
-                            <form onSubmit={handleMainSubmit} className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="prompt">Context</Label>
-                                    <div className="relative">
-                                        <Textarea
-                                            id="prompt"
-                                            value={prompt}
-                                            onChange={(e) => setPrompt(e.target.value)}
-                                            placeholder="Describe the design or provide context..."
-                                            className={`resize-none pr-10 overflow-y-auto ${expandedTextarea ? 'min-h-48 h-48' : 'min-h-32 h-32'}`}
-                                            disabled={isLoading}
-                                        />
-                                        <Button
-                                            title='Open advanced editor'
-                                            type='button'
-                                            variant="ghost"
-                                            onClick={toggleTextareaExpand}
-                                            className='absolute top-2 right-2 h-6 w-6 p-0'
-                                        >
-                                            <Expand size={16} />
-                                        </Button>
-                                        <div className="absolute bottom-2 left-2 flex space-x-2">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="icon"
-                                                className="h-8 w-8 opacity-70 hover:opacity-100 bg-white shadow-sm"
-                                                onClick={triggerImageUpload}
-                                                title={referenceImageBase64 ? 'Change reference image' : 'Add reference image'}
-                                            >
-                                                <ImageIcon size={16} />
-                                            </Button>
-                                            <input
-                                                type="file"
-                                                ref={fileInputRef}
-                                                accept="image/png, image/jpeg, image/webp"
-                                                onChange={handleImageUpload}
-                                                className="hidden"
-                                            />
-                                        </div>
-
-                                        <Button
-                                            title='click and enhance your prompt..'
-                                            type='button'
-                                            variant="outline"
-                                            onClick={handleEnhancePrompt}
-                                            className='absolute bottom-2 right-2 h-8 w-auto px-3 hover:opacity-100 flex items-center cursor-pointer gap-1 text-purple-600 hover:text-purple-700'
-                                        >
-                                            {isPromptEnhancerLoading ? (
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                            ) : (
-                                                <WandSparkles size={16} />
-                                            )}
-                                        </Button>
-                                    </div>
-                                    {enhanceError && (
-                                        <Alert variant="destructive" className="py-2 mt-2">
-                                            <AlertTriangle className="h-4 w-4" />
-                                            <AlertDescription className="text-xs ml-2">{enhanceError}</AlertDescription>
-                                        </Alert>
-                                    )}
-
-                                    {/* Display uploaded image preview */}
-                                    {referenceImagePreview && (
-                                        <div className="relative mt-2 border rounded-md overflow-hidden">
-                                            <img
-                                                src={referenceImagePreview} // Use preview state here
-                                                alt="Reference"
-                                                className="w-full h-32 object-contain bg-gray-50"
-                                            />
-                                            <Button
-                                                variant="destructive"
-                                                size="icon"
-                                                className="absolute top-1 right-1 h-6 w-6 opacity-80"
-                                                onClick={removeImage}
-                                                title="Remove reference image"
-                                            >
-                                                <X size={14} />
-                                            </Button>
-                                        </div>
-                                    )}
-                                    {/* Indicate if image is primary mode */}
-                                    {isImageGenerationMode && (
-                                        <Badge variant="secondary" className="mt-1 w-full justify-center py-1">
-                                            Generating based on image + prompt
-                                        </Badge>
-                                    )}
-                                </div>
-
-                                <Separator />
-
-                                {/* Device Type Selector */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="device-type">Device Type</Label>
-                                    <Select 
-                                        value={deviceType} 
-                                        onValueChange={setDeviceType}
+                {/* Main content area with ScrollArea */}
+                <ScrollArea className="flex-grow overflow-auto">
+                    <CardContent className="p-4 space-y-6">
+                        <form onSubmit={handleMainSubmit} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="prompt">Context</Label>
+                                <div className="relative">
+                                    <Textarea
+                                        id="prompt"
+                                        value={prompt}
+                                        onChange={(e) => setPrompt(e.target.value)}
+                                        placeholder="Describe the design or provide context..."
+                                        className={`resize-none pr-10 overflow-y-auto ${expandedTextarea ? 'min-h-48 h-48' : 'min-h-32 h-32'}`}
+                                        disabled={isLoading}
+                                    />
+                                    <Button
+                                        title='Open advanced editor'
+                                        type='button'
+                                        variant="ghost"
+                                        onClick={toggleTextareaExpand}
+                                        className='absolute top-2 right-2 h-6 w-6 p-0'
                                     >
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Select device type" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="desktop">
-                                                <div className="flex items-center">
-                                                    <Monitor className="h-4 w-4 mr-2" />
-                                                    <span>Desktop</span>
-                                                </div>
-                                            </SelectItem>
-                                            <SelectItem value="mobile">
-                                                <div className="flex items-center">
-                                                    <Smartphone className="h-4 w-4 mr-2" />
-                                                    <span>Mobile</span>
-                                                </div>
-                                            </SelectItem>
-                                            <SelectItem value="tablet">
-                                                <div className="flex items-center">
-                                                    <Tablet className="h-4 w-4 mr-2" />
-                                                    <span>Tablet</span>
-                                                </div>
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <Separator />
-
-                                {/* Design Flow Section - Disable if image is selected? */}
-                                <div className={`space-y-3 ${referenceImageBase64 ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                <div className="flex items-center justify-between">
-                                        <Label>Design Flow (Optional)</Label>
-                                        {pages.length > 0 && !referenceImageBase64 && (
-                                            <Button
-                                                type="button"
-                                                onClick={handleDeleteAllFlow}
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-6 w-6 text-gray-400 hover:text-red-500"
-                                                title="Delete All Flow"
-                                            >
-                                                <Trash2 size={14} />
-                                            </Button>
-                                        )}
-                                    </div>
-                                    {referenceImageBase64 && (
-                                        <p className="text-xs text-orange-600">Flow generation is disabled when a reference image is used (image generation creates a single page).</p>
-                                    )}
-                                    <div className="flex gap-2">
-                                        <Input
-                                            type="text"
-                                            value={newPageName}
-                                            onChange={(e) => setNewPageName(e.target.value)}
-                                            placeholder="Page Name (e.g., About Us)"
-                                            disabled={isLoading || !!referenceImageBase64}
-                                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddPage(); } }}
-                                            className="flex-grow"
-                                        />
+                                        <Expand size={16} />
+                                    </Button>
+                                    <div className="absolute bottom-2 left-2 flex space-x-2">
                                         <Button
                                             type="button"
-                                            onClick={handleAddPage}
-                                            disabled={!newPageName.trim() || isLoading || !!referenceImageBase64}
-                                            variant="secondary"
+                                            variant="outline"
                                             size="icon"
+                                            className="h-8 w-8 opacity-70 hover:opacity-100 bg-white shadow-sm"
+                                            onClick={triggerImageUpload}
+                                            title={referenceImageBase64 ? 'Change reference image' : 'Add reference image'}
                                         >
-                                            <Plus size={16} />
+                                            <ImageIcon size={16} />
                                         </Button>
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            accept="image/png, image/jpeg, image/webp"
+                                            onChange={handleImageUpload}
+                                            className="hidden"
+                                        />
                                     </div>
 
                                     <Button
-                                        type="button"
-                                        onClick={handleAutoFlow}
-                                        disabled={!prompt.trim() || isLoading || isAutoFlowLoading || !!referenceImageBase64} 
+                                        title='click and enhance your prompt..'
+                                        type='button'
                                         variant="outline"
-                                        className="w-full"
+                                        onClick={handleEnhancePrompt}
+                                        className='absolute bottom-2 right-2 h-8 w-auto px-3 hover:opacity-100 flex items-center cursor-pointer gap-1 text-purple-600 hover:text-purple-700'
                                     >
-                                       {isAutoFlowLoading ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                <span>{hasFlowGenerated ? 'Regenerating Flow...' : 'Generating Flow...'}</span>
-                                            </>
+                                        {isPromptEnhancerLoading ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
                                         ) : (
-                                            <>
-                                                <Sparkles size={16} className="mr-2" />
-                                                <span>{hasFlowGenerated ? 'Regenerate Flow' : 'Suggest Auto Flow'}</span>
-                                            </>
+                                            <WandSparkles size={16} />
                                         )}
                                     </Button>
+                                </div>
+                                {enhanceError && (
+                                    <Alert variant="destructive" className="py-2 mt-2">
+                                        <AlertTriangle className="h-4 w-4" />
+                                        <AlertDescription className="text-xs ml-2">{enhanceError}</AlertDescription>
+                                    </Alert>
+                                )}
 
-                                    {flowError && (
-                                        <Alert variant="destructive" className="py-2">
-                                            <AlertTriangle className="h-4 w-4" />
-                                            <AlertDescription className="text-xs ml-2">{flowError}</AlertDescription>
-                                        </Alert>
-                                    )}
+                                {/* Display uploaded image preview */}
+                                {referenceImagePreview && (
+                                    <div className="relative mt-2 border rounded-md overflow-hidden">
+                                        <img
+                                            src={referenceImagePreview}
+                                            alt="Reference"
+                                            className="w-full h-32 object-contain bg-gray-50"
+                                        />
+                                        <Button
+                                            variant="destructive"
+                                            size="icon"
+                                            className="absolute top-1 right-1 h-6 w-6 opacity-80"
+                                            onClick={removeImage}
+                                            title="Remove reference image"
+                                        >
+                                            <X size={14} />
+                                        </Button>
+                                    </div>
+                                )}
+                                {/* Indicate if image is primary mode */}
+                                {isImageGenerationMode && (
+                                    <Badge variant="secondary" className="mt-1 w-full justify-center py-1">
+                                        Generating based on image + prompt
+                                    </Badge>
+                                )}
+                            </div>
 
+                            <Separator />
+
+                            {/* Device Type Selector */}
+                            <div className="space-y-2">
+                                <Label htmlFor="device-type">Device Type</Label>
+                                <Select 
+                                    value={deviceType} 
+                                    onValueChange={setDeviceType}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select device type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="desktop">
+                                            <div className="flex items-center">
+                                                <Monitor className="h-4 w-4 mr-2" />
+                                                <span>Desktop</span>
+                                            </div>
+                                        </SelectItem>
+                                        <SelectItem value="mobile">
+                                            <div className="flex items-center">
+                                                <Smartphone className="h-4 w-4 mr-2" />
+                                                <span>Mobile</span>
+                                            </div>
+                                        </SelectItem>
+                                        <SelectItem value="tablet">
+                                            <div className="flex items-center">
+                                                <Tablet className="h-4 w-4 mr-2" />
+                                                <span>Tablet</span>
+                                            </div>
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <Separator />
+
+                            {/* Design Flow Section - Disable if image is selected? */}
+                            <div className={`space-y-3 ${referenceImageBase64 ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                <div className="flex items-center justify-between">
+                                    <Label>Design Flow (Optional)</Label>
                                     {pages.length > 0 && !referenceImageBase64 && (
-                                        <div className="space-y-2">
-                                            <Label className="text-xs">Added Pages:</Label>
-                                            <ScrollArea className="h-40 border rounded-md">
-                                                <ul className="divide-y divide-gray-100">
-                                                    {pages.map((page, index) => (
-                                                        <li key={`${page}-${index}`} className="flex items-center justify-between p-2 text-sm">
-                                                            <Badge variant="outline" className="px-2 py-1 font-normal break-all text-left">
-                                                                {page}
-                                                            </Badge>
-                                                            <Button
-                                                                type="button"
-                                                                onClick={() => handleRemovePage(index)}
-                                                                disabled={isLoading}
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-6 w-6 text-gray-400 hover:text-red-500"
-                                                            >
-                                                                <Trash2 size={14} />
-                                                            </Button>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </ScrollArea>
-                                        </div>
+                                        <Button
+                                            type="button"
+                                            onClick={handleDeleteAllFlow}
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6 text-gray-400 hover:text-red-500"
+                                            title="Delete All Flow"
+                                        >
+                                            <Trash2 size={14} />
+                                        </Button>
                                     )}
                                 </div>
-
-                                <Separator />
+                                {referenceImageBase64 && (
+                                    <p className="text-xs text-orange-600">Flow generation is disabled when a reference image is used (image generation creates a single page).</p>
+                                )}
+                                <div className="flex gap-2">
+                                    <Input
+                                        type="text"
+                                        value={newPageName}
+                                        onChange={(e) => setNewPageName(e.target.value)}
+                                        placeholder="Page Name (e.g., About Us)"
+                                        disabled={isLoading || !!referenceImageBase64}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddPage(); } }}
+                                        className="flex-grow"
+                                    />
+                                    <Button
+                                        type="button"
+                                        onClick={handleAddPage}
+                                        disabled={!newPageName.trim() || isLoading || !!referenceImageBase64}
+                                        variant="secondary"
+                                        size="icon"
+                                    >
+                                        <Plus size={16} />
+                                    </Button>
+                                </div>
 
                                 <Button
-                                    type="submit"
-                                    disabled={isLoading || !prompt.trim()}
-                                    className="w-full bg-purple-700"
+                                    type="button"
+                                    onClick={handleAutoFlow}
+                                    disabled={!prompt.trim() || isLoading || isAutoFlowLoading || !!referenceImageBase64} 
+                                    variant="outline"
+                                    className="w-full"
                                 >
-                                    {isLoading ? (
+                                    {isAutoFlowLoading ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            <span>Generating...</span>
+                                            <span>{hasFlowGenerated ? 'Regenerating Flow...' : 'Generating Flow...'}</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Send size={16} className="mr-2" />
-                                            <span>{isImageGenerationMode ? 'Generate from Image' : (pages.length > 0 ? 'Generate Flow' : 'Generate Design')}</span>
+                                            <Sparkles size={16} className="mr-2" />
+                                            <span>{hasFlowGenerated ? 'Regenerate Flow' : 'Suggest Auto Flow'}</span>
                                         </>
                                     )}
                                 </Button>
-                            </form>
 
-                            {error && (
-                                <Alert variant="destructive">
-                                    <AlertTriangle className="h-4 w-4" />
-                                    <AlertDescription className="ml-2">{error}</AlertDescription>
-                                </Alert>
-                            )}
-                        </CardContent>
-                    </ScrollArea>
+                                {flowError && (
+                                    <Alert variant="destructive" className="py-2">
+                                        <AlertTriangle className="h-4 w-4" />
+                                        <AlertDescription className="text-xs ml-2">{flowError}</AlertDescription>
+                                    </Alert>
+                                )}
 
-                    <CardFooter className="p-4 bg-gray-50 border-t">
-                        <div className="w-full">
-                            <h3 className="text-sm font-medium text-gray-700 mb-2">Tips</h3>
-                            <ul className="text-xs text-gray-600 space-y-1">
-                                <li>• Describe the desired output in the context box.</li>
-                                <li>• Select the target device type for your design.</li>
-                                <li>• Optionally add a reference image for visual guidance (generates a single page).</li>
-                                <li>• Optionally define a multi-page flow (if no image is used).</li>
-                                <li>• "Generate" uses context + image (if present) or context + flow.</li>
-                            </ul>
-                        </div>
-                    </CardFooter>
-                </Card>
-            {/* )} */}
+                                {pages.length > 0 && !referenceImageBase64 && (
+                                    <div className="space-y-2">
+                                        <Label className="text-xs">Added Pages:</Label>
+                                        <ScrollArea className="h-40 border rounded-md">
+                                            <ul className="divide-y divide-gray-100">
+                                                {pages.map((page, index) => (
+                                                    <li key={`${page}-${index}`} className="flex items-center justify-between p-2 text-sm">
+                                                        <Badge variant="outline" className="px-2 py-1 font-normal break-all text-left">
+                                                            {page}
+                                                        </Badge>
+                                                        <Button
+                                                            type="button"
+                                                            onClick={() => handleRemovePage(index)}
+                                                            disabled={isLoading}
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-gray-400 hover:text-red-500"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </Button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </ScrollArea>
+                                    </div>
+                                )}
+                            </div>
+
+                            <Separator />
+
+                            <Button
+                                type="submit"
+                                disabled={isLoading || !prompt.trim()}
+                                className="w-full bg-purple-700"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <span>Generating...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send size={16} className="mr-2" />
+                                        <span>{isImageGenerationMode ? 'Generate from Image' : (pages.length > 0 ? 'Generate Flow' : 'Generate Design')}</span>
+                                    </>
+                                )}
+                            </Button>
+                        </form>
+
+                        {error && (
+                            <Alert variant="destructive">
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertDescription className="ml-2">{error}</AlertDescription>
+                            </Alert>
+                        )}
+                    </CardContent>
+                </ScrollArea>
+
+                <CardFooter className="p-4 bg-gray-50 border-t flex-shrink-0">
+                    <div className="w-full">
+                        <h3 className="text-sm font-medium text-gray-700 mb-2">Tips</h3>
+                        <ul className="text-xs text-gray-600 space-y-1">
+                            <li>• Describe the desired output in the context box.</li>
+                            <li>• Select the target device type for your design.</li>
+                            <li>• Optionally add a reference image for visual guidance (generates a single page).</li>
+                            <li>• Optionally define a multi-page flow (if no image is used).</li>
+                            <li>• "Generate" uses context + image (if present) or context + flow.</li>
+                        </ul>
+                    </div>
+                </CardFooter>
+            </Card>
             
             {/* Markdown Editor Dialog */}
             <MarkdownEditorDialog

@@ -1,6 +1,6 @@
 // src/components/Dashboard.tsx
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,15 +14,20 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Search, Calendar, Clock } from 'lucide-react';
+import { Loader2, Search, Calendar, Clock, MoreHorizontal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { formatDate } from '@/lib/utils';
 import ApiService from '../services/apiService';
 import { getErrorMessage } from '../lib/errorHandling';
 import { ProjectResponse } from '@/types/type';
-import { Sidebar } from './sidebar';
 
 export function Dashboard() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -142,6 +147,23 @@ export function Dashboard() {
     }
   }
 
+  const handleDeleteProject = async (projectId: number | string) => {
+    const toastId = toast.loading(`Deleting project...`);
+    
+    try {
+      await ApiService.deleteProject(projectId);
+      
+      setProjects(prevProjects => prevProjects.filter(project => project.id !== projectId));
+      setFilteredProjects(prevFilteredProjects => prevFilteredProjects.filter(project => project.id !== projectId));
+      
+      toast.success('Project deleted successfully', { id: toastId });
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+      toast.error(`Failed to delete project: ${errorMessage}`, { id: toastId });
+      console.error(`Error deleting project with ID ${projectId}:`, error);
+    }
+  };
+
   return (
     <div className="flex h-screen w-full">
       {/* <Sidebar /> */}
@@ -198,13 +220,13 @@ export function Dashboard() {
         </div>
 
         {/* Search Bar */}
-        <div className="relative mb-6">
+        <div className="relative mb-6 w-1/4 ">
           <Search className="absolute left-2 top-3 h-4 w-4 text-gray-500" />
           <Input
             placeholder="Search projects..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
+            className=" flex pl-8 "
           />
         </div>
 
@@ -249,7 +271,7 @@ export function Dashboard() {
                 </TableHeader>
                 <TableBody>
                   {filteredProjects.slice(0, displayLimit).map((project) => (
-                    <TableRow key={project.id}>
+                    <TableRow key={project.id} className="cursor-pointer" onClick={() => navigate(`/canvas/${project.id}`)}>
                       <TableCell className="font-medium">{project.name}</TableCell>
                       <TableCell>
                         <div className="flex items-center">
@@ -264,11 +286,30 @@ export function Dashboard() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Link to={`/canvas/${project.id}`}>
-                          <Button variant="outline" size="sm">
-                            Open Canvas
-                          </Button>
-                        </Link>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              className="text-gray-400 cursor-not-allowed" 
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-red-600"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteProject(project.id);
+                              }}
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}

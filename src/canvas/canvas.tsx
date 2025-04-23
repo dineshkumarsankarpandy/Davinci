@@ -28,24 +28,20 @@ import {
   GroupSaveData,
   PositionData ,
   ScreenSaveData,
-  ScreenVersionSaveData
+  ScreenVersionSaveData,
+  WebsiteSizeData
 } from '../types/type';
 import { getErrorMessage } from '@/lib/errorHandling';
 import { ContentHighlightInfo, ContentActionType } from '../useContentHighlights';
-// import { Button } from '@/components/ui/button';
 import { parse_title_and_version } from '@/lib/utils';
-// import { Save, Loader2 } from 'lucide-react';
 import BottomBar from './bottomBar';
 
 
-// interface GroupBounds {
-//   x: number; y: number; width: number; height: number;
-// }
 
 // Constants
 const DEFAULT_WEBSITE_WIDTH = 1440;
 const DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT = 600;
-const VERTICAL_SPACING = 500;
+const VERTICAL_SPACING = 3000;
 const HORIZONTAL_PLACEMENT_X = 100;
 const HORIZONTAL_GROUP_SPACING = 80;
 const HORIZONTAL_VERSION_SPACING = 200;
@@ -86,13 +82,6 @@ const CanvasApp: React.FC = () => {
   const [editContentValue, setEditContentValue] = useState('');
 
   const [groupNameMap, setGroupNameMap] = useState<Record<string, string>>({});
-
-  // // --- Helper Functions ---
-  // const fitContent = useCallback(( duration = 500, ) => {
-  //   setTimeout(() => {
-  //     canvasRef.current?.fitContentToView({  duration});
-  //   }, 300);
-  // }, []);
 
 
 
@@ -141,19 +130,37 @@ const CanvasApp: React.FC = () => {
         const loadedSizes: Record<string, { width: number, height: number }> = {};
         const groupNames: Record<string, string> = {};
 
-        response.groups.forEach(group => {
+        let currentMaxY = 100; // Initial vertical position for the first group
+
+        // --- Sort groups by their saved vertical position to maintain relative order ---
+        const sortedGroups = [...response.groups].sort((a, b) => {
+            const yA = a.metadata?.position?.y ?? Infinity;
+            const yB = b.metadata?.position?.y ?? Infinity;
+            return yA - yB;
+        });
+        // --------------------------------------------------------------------------
+
+
+        // --- Process groups sequentially, calculating non-overlapping Y positions ---
+        sortedGroups.forEach(group => {
           const groupFrontendId = group.metadata?.frontendId ?? `db-group-${group.id}`;
           if (group.name) {
             groupNames[groupFrontendId] = group.name;
           }
 
+          const groupStartY = currentMaxY;
+          const groupHeight = group.metadata?.size?.height ?? DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT; // Fallback height
+
+
+          // --- Process Screens within this Group ---
           group.screens.forEach(screen => {
             const baseScreenFrontendId = screen.metadata?.frontendId ?? `db-screen-${screen.id}`;
-            const position = screen.metadata?.position ?? { x: Math.random() * 500 + 50, y: Math.random() * 500 + 50 };
+            const screenPositionX = screen.metadata?.position?.x ?? HORIZONTAL_PLACEMENT_X;
             const size = screen.metadata?.size ?? { width: DEFAULT_WEBSITE_WIDTH, height: DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT };
             const pageName = screen.metadata?.pageName ?? null;
             const baseTitle = screen.title || `Screen ${screen.id}`;
 
+            // --- Process Versions for this Screen ---
             screen.versions.forEach(version => {
               const versionFrontendId = version.version_number === 1 || version.version_number === 0
                 ? baseScreenFrontendId
@@ -166,63 +173,101 @@ const CanvasApp: React.FC = () => {
                 id: versionFrontendId,
                 title: versionedTitle,
                 htmlContent: version.html_content || '<p>No content loaded</p>',
-                position: { x: position.x, y: position.y },
+                // ** Apply the calculated groupStartY for vertical position **
+                position: { x: screenPositionX, y: groupStartY },
+                // Use saved/default size
                 width: size.width,
                 height: size.height,
                 groupId: groupFrontendId,
                 pageName: pageName,
               };
               loadedWebsites.push(website);
+              // Store the actual size for potential use (e.g., by WebsiteDisplay/Group)
               loadedSizes[versionFrontendId] = { width: size.width, height: size.height };
-            });
-          });
-        });
+            }); // End versions loop
+          }); // End screens loop
 
-        // Adjust positions to prevent overlapping
+
+          // --- Update currentMaxY for the next group ---
+          // Use the saved group height for accurate spacing
+          currentMaxY = groupStartY + groupHeight + VERTICAL_SPACING;
+          // -------------------------------------------
+
+        }); // End groups loop
+
+
         const baseIdToVersions: Record<string, WebsiteData[]> = {};
         loadedWebsites.forEach(website => {
-          const match = website.id.match(/^(.+?)(?:-v(\d+))?$/);
-          if (match) {
-            const baseId = match[1];
-            if (!baseIdToVersions[baseId]) {
-              baseIdToVersions[baseId] = [];
+            const match = website.id.match(/^(.*?)(?:-v\d+)?$/);
+            if (match && match[1]) { // Ensure match[1] exists
+                const baseId = match[1]; // ID without the version suffix
+                const originalScreen = loadedWebsites.find(w =>
+                     w.id === baseId && // Matches the base part
+                     (w.groupId === website.groupId) && // Belongs to the same conceptual group
+                     parse_title_and_version(w.title)[1] === null // Is the actual base version (no vX)
+                );
+                const effectiveBaseId = originalScreen ? originalScreen.id : baseId; // Use original ID if found
+
+                if (!baseIdToVersions[effectiveBaseId]) {
+                    baseIdToVersions[effectiveBaseId] = [];
+                }
+                baseIdToVersions[effectiveBaseId].push(website);
+            } else {
+                if (!baseIdToVersions[website.id]) {
+                     baseIdToVersions[website.id] = [website];
+                }
             }
-            baseIdToVersions[baseId].push(website);
-          }
         });
+
 
         Object.entries(baseIdToVersions).forEach(([baseId, versions]) => {
           if (versions.length > 1) {
+            // Sort versions: base (v0/v1) first, then numerically
             versions.sort((a, b) => {
-              const versionA = a.id === baseId ? 1 : parseInt(a.id.split('-v')[1]);
-              const versionB = b.id === baseId ? 1 : parseInt(b.id.split('-v')[1]);
+              const versionA = parse_title_and_version(a.title)[1] ?? 0; // Treat base as 0 if no version num
+              const versionB = parse_title_and_version(b.title)[1] ?? 0; // Treat base as 0
               return versionA - versionB;
             });
 
+            // Find the actual base website object in the sorted list (should be the first)
             const baseWebsite = versions[0];
-            const baseX = baseWebsite.position.x;
-            const baseY = baseWebsite.position.y;
-            const websiteWidth = baseWebsite.width || DEFAULT_WEBSITE_WIDTH;
+            if (!baseWebsite) return; // Should not happen, but safeguard
 
+            const baseX = baseWebsite.position.x; // Use the X position already set
+            const baseY = baseWebsite.position.y; // Use the Y position calculated in the groups loop
+            const websiteWidth = loadedSizes[baseWebsite.id]?.width || baseWebsite.width || DEFAULT_WEBSITE_WIDTH;
+
+            // Adjust X position for subsequent versions
             versions.forEach((version, index) => {
-              version.position.x = baseX + index * (websiteWidth + HORIZONTAL_VERSION_SPACING);
+              // Base version (index 0) keeps its position
+              if (index > 0) {
+                version.position.x = baseX + index * (websiteWidth + HORIZONTAL_VERSION_SPACING);
+              }
+               // Ensure Y position is consistent for all versions (already set from groupStartY)
               version.position.y = baseY;
             });
           }
         });
+        // --- End Version Horizontal Adjustment ---
+
 
         setGeneratedWebsites(loadedWebsites);
-        setWebsiteSizes(loadedSizes);
+        setWebsiteSizes(loadedSizes); // Use the sizes loaded from screen metadata
         setGroupNameMap(groupNames);
+
       } catch (err: any) {
-        // ... existing error handling ...
+         console.error("Error loading canvas state:", err);
+         const message = getErrorMessage(err);
+         setError(`Failed to load project: ${message}`);
+         toast.error(`Failed to load project: ${message}`);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadData();
-  }, [projectId, isNewProject, navigate]);
+  }, [projectId, isNewProject, navigate]); // Dependencies remain the same
+
 
 
   const groupedWebsites = useCallback(() => {
@@ -708,7 +753,12 @@ const CanvasApp: React.FC = () => {
 
 
 
-  const handleSaveCanvas = async () => {
+ // src/components/CanvasApp.tsx
+
+// ... other imports ...
+
+
+const handleSaveCanvas = async () => {
     if (!projectId) {
         toast.error("Project ID is missing. Cannot save.");
         return;
@@ -717,9 +767,7 @@ const CanvasApp: React.FC = () => {
         toast("Already saving...", { icon: '⏳' });
         return;
     }
-    if (generatedWebsites.length === 0 && !isNewProject) { // Allow saving empty state for a non-new project
-      // If it's not a new project and has no websites, maybe we should clear the backend?
-      // Let's proceed to save an empty state for now. Backend logic handles clearing.
+    if (generatedWebsites.length === 0 && !isNewProject) {
        console.warn("Saving empty canvas state for existing project.");
       // toast.error("Nothing to save. Generate some content first.");
       // return;
@@ -740,10 +788,41 @@ const CanvasApp: React.FC = () => {
         if (websitesInGroup.length === 0) continue;
 
         const screensPayload: ScreenSaveData[] = [];
-        const processedBaseScreenIds = new Set<string>(); 
+        const processedBaseScreenIds = new Set<string>();
 
-        const firstWebsite = websitesInGroup[0]; // Use first item for position anchor
-        const groupPosition: PositionData = { x: firstWebsite.position.x, y: firstWebsite.position.y };
+        // --- Calculate Group Bounds ---
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        let groupPosition: PositionData | null = null; // Use first website's position as anchor
+
+        websitesInGroup.forEach((website, index) => {
+            const size = websiteSizes[website.id] ?? {
+                width: website.width ?? DEFAULT_WEBSITE_WIDTH,
+                height: website.height ?? DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT
+            };
+            const posX = website.position.x;
+            const posY = website.position.y;
+            const width = size.width;
+            const height = size.height;
+
+            if (index === 0) {
+                groupPosition = { x: posX, y: posY }; // Anchor position
+            }
+
+            minX = Math.min(minX, posX);
+            minY = Math.min(minY, posY);
+            maxX = Math.max(maxX, posX + width);
+            maxY = Math.max(maxY, posY + height);
+        });
+
+        const groupSize: WebsiteSizeData | null = (minX !== Infinity)
+          ? { width: maxX - minX, height: maxY - minY }
+          : null;
+        // ------------------------------
+
+        // Use the calculated or first website's position if calculation failed
+        const finalGroupPosition = groupPosition ?? (websitesInGroup[0]?.position || { x: 0, y: 0 });
+
+
         let groupName: string | null = null;
         if (groupId.startsWith('flow-')) {
           groupName = `Flow (${groupId.substring(5, 13)}...)`;
@@ -751,12 +830,18 @@ const CanvasApp: React.FC = () => {
            const baseWebsite = generatedWebsites.find(w => w.id === groupId.replace('version-group-', ''));
            groupName = `Versions of '${baseWebsite ? parse_title_and_version(baseWebsite.title)[0] : 'Unknown'}'`;
         } else if (groupId.startsWith('single-item-group-')){
+           // Maybe derive name from the single item?
+           groupName = `Item: ${websitesInGroup[0]?.title ?? 'Unnamed'}`;
+        } else if (websitesInGroup[0]?.groupId === groupId) {
+           // Explicit group created via generation (e.g., image prompt)
+           groupName = groupNameMap[groupId] || `Group: ${groupId.substring(0, 8)}`; // Use stored name or fallback
         } else {
-            groupName = firstWebsite.groupId === groupId ? `Group: ${groupId}` : null; // Basic fallback
+           groupName = `Group: ${groupId}`; // Basic fallback
         }
 
 
         for (const website of websitesInGroup) {
+          // ... (existing screen processing logic remains the same) ...
           const [baseTitle, versionNum] = parse_title_and_version(website.title);
 
           let baseScreenFrontendId: string;
@@ -770,7 +855,7 @@ const CanvasApp: React.FC = () => {
             );
             baseScreenFrontendId = originalInFlow ? originalInFlow.id : website.id; // Fallback to self if base not found
           } else {
-            baseScreenFrontendId = website.id;
+            baseScreenFrontendId = website.id; // Base is itself if not a version/flow variant
           }
 
           if (processedBaseScreenIds.has(baseScreenFrontendId)) {
@@ -781,71 +866,76 @@ const CanvasApp: React.FC = () => {
 
           if (!baseWebsiteData) {
             console.warn(`Could not find base website data for base ID ${baseScreenFrontendId}. Skipping screen.`);
-            continue; 
+            continue;
           }
-
-          const allVersionsForThisBase: ScreenVersionSaveData[] = generatedWebsites
+          // --- Find all versions related to this base screen *within this group* ---
+          const allVersionsForThisBase: ScreenVersionSaveData[] = websitesInGroup // Filter from *this* group
             .filter(w => {
-              const [wTitle, wVersion] = parse_title_and_version(w.title);
-
-              if (getWebsiteGroupId(w) !== groupId) return false;
+               // Determine if 'w' is a version of 'baseWebsiteData' within the context of 'groupId'
+              const [wBaseTitle, wVersionNum] = parse_title_and_version(w.title);
 
               if (groupId.startsWith('version-group-')) {
-                return true;
+                 // If it's a version group, any website in this group belongs to the base ID
+                return w.id === baseScreenFrontendId || wVersionNum !== null;
               } else if (groupId.startsWith('flow-')) {
-                return w.pageName === baseWebsiteData.pageName;
-              } else if (groupId.startsWith('single-item-group-')) {
-                 return w.id === baseScreenFrontendId;
-              } else {
-                 return w.groupId === groupId && wTitle === parse_title_and_version(baseWebsiteData.title)[0];
+                 // In a flow, versions must match the pageName and base title
+                 return w.pageName === baseWebsiteData.pageName && wBaseTitle === baseTitle;
+              }
+              // Add logic for other group types if necessary
+              else {
+                 // For generic groups or single items, check if the title matches the base title
+                 return wBaseTitle === baseTitle;
               }
             })
             .map(v => ({
-              id: v.id, 
-              title: v.title, 
+              id: v.id, // Keep frontend ID for potential reference
+              title: v.title,
               htmlContent: v.htmlContent,
             }));
 
+           // Sort versions based on the version number derived from the title
            allVersionsForThisBase.sort((a, b) => {
-               const vA = parse_title_and_version(a.title)[1] ?? 0;
-               const vB = parse_title_and_version(b.title)[1] ?? 0;
+               const vA = parse_title_and_version(a.title)[1] ?? 0; // Treat base as version 0
+               const vB = parse_title_and_version(b.title)[1] ?? 0; // Treat base as version 0
                return vA - vB;
            });
+          // --- End Finding/Sorting Versions ---
+
 
           // --- Create Screen Payload ---
-          const baseScreenSize = websiteSizes[baseScreenFrontendId] ?? { width: baseWebsiteData.width, height: baseWebsiteData.height };
+          const baseScreenSize = websiteSizes[baseScreenFrontendId] ?? { width: baseWebsiteData.width ?? DEFAULT_WEBSITE_WIDTH, height: baseWebsiteData.height ?? DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT };
           const screenData: ScreenSaveData = {
             baseFrontendId: baseScreenFrontendId,
-            title: parse_title_and_version(baseWebsiteData.title)[0],
+            title: baseTitle, // Use the parsed base title
             position: { x: baseWebsiteData.position.x, y: baseWebsiteData.position.y },
-            width: baseScreenSize.width ?? DEFAULT_WEBSITE_WIDTH,
-            height: baseScreenSize.height ?? DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT,
+            width: baseScreenSize.width,
+            height: baseScreenSize.height,
             pageName: baseWebsiteData.pageName,
-            versions: allVersionsForThisBase,
+            versions: allVersionsForThisBase, // Use the correctly filtered and sorted versions
           };
 
           screensPayload.push(screenData);
           processedBaseScreenIds.add(baseScreenFrontendId);
-        }
+        } // End loop through websites in group
 
 
         // --- Create Group Payload ---
         if (screensPayload.length > 0) {
           groupsPayload.push({
             frontendId: groupId,
-            name: groupName,
-            position: groupPosition, 
+            name: groupName, // Use the derived group name
+            position: finalGroupPosition, // Use the calculated anchor position
+            size: groupSize,          // <--- ADDED CALCULATED SIZE
             screens: screensPayload,
-            // size: undefined // Add if you track group size
           });
         }
-      }
+      } // End loop through groups
 
       const payload: CanvasSaveRequest = {
         groups: groupsPayload,
       };
 
-      console.log("Saving payload:", JSON.stringify(payload, null, 2)); 
+      console.log("Saving payload:", JSON.stringify(payload, null, 2));
 
       // --- API Call ---
       const response = await ApiService.saveCanvasState(projectId, payload);
@@ -858,7 +948,7 @@ const CanvasApp: React.FC = () => {
       setError(`Failed to save project: ${errorMsg}`);
       toast.error(`Save failed: ${errorMsg}`, { id: saveToastId });
     } finally {
-      setIsSaving(false); 
+      setIsSaving(false);
     }
   };
   
