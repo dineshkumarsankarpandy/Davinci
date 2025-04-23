@@ -100,6 +100,7 @@ const WebsiteDisplay: React.FC<WebsiteDisplayProps> = ({
             className={`website-display-container ${isActive ? 'active-website' : ''}`}
         >
             {(pageNameIndicator || versionIndicator) && (
+                
                 <div
                     className="absolute -top-6 left-1 flex gap-2 pointer-events-none"
                     style={{ zIndex: 3 }}

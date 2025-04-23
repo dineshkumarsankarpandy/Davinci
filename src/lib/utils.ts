@@ -1,3 +1,4 @@
+import { GroupType } from "@/types/enum";
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -28,10 +29,61 @@ export const formatDate = (dateString: string | Date | undefined): string => {
 }
 
 
-export const parse_title_and_version = (title: string): [string, number] => {
-  const match = title.match(/^(.*?)\s*\(v(\d+)\)$/);
-  if (match) {
-      return [match[1].trim(), parseInt(match[2], 10)];
+export const parse_title_and_version = (title: string): [string, number | null] => {
+  const versionMatch = title.match(/\(v(\d+)\)$/);
+  if (versionMatch && versionMatch[1]) {
+    const baseTitle = title.replace(/\s\(v\d+\)$/, '');
+    const versionNumber = parseInt(versionMatch[1], 10);
+    return [baseTitle, versionNumber];
   }
-  return [title, 1];
+  const v0Match = title.match(/\(v0\)$/);
+   if (v0Match) {
+     const baseTitle = title.replace(/\s\(v0\)$/, '');
+     return [baseTitle, 0];
+   }
+
+  return [title, null];
+};
+
+
+export function getBaseScreenId(websiteId: string): string {
+  if (!websiteId) return '';
+  return websiteId.replace(/-v\d+$/, '');
 }
+
+
+export const determineGroupType = (groupId: string): GroupType | null => {
+  const parts = groupId.split('-');
+  if (parts.length < 2) return null;
+  
+  switch (parts[1]) {
+    case GroupType.IMAGE:
+      return GroupType.IMAGE;
+    case GroupType.FLOW:
+      return GroupType.FLOW;
+    case GroupType.VERSION:
+      return GroupType.VERSION;
+    case GroupType.SINGLE:
+      return GroupType.SINGLE;
+    default:
+      return null;
+  }
+};
+
+export const getGroupDisplayName = (type: GroupType, groupId: string): string => {
+  const idSuffix = groupId.split('-').slice(2).join('-').substring(0, 8);
+  switch (type) {
+    case GroupType.IMAGE:
+      return `Group: ${idSuffix}...`;
+    case GroupType.FLOW:
+      return `Group: ${idSuffix}...`;
+    case GroupType.VERSION:
+      return ` Group: ${idSuffix}...`;
+    case GroupType.SINGLE:
+      return ` Group: ${idSuffix}...`;
+    default:
+      return `Group: ${idSuffix}...`;
+  }
+
+};
+

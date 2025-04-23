@@ -4,6 +4,8 @@ import { WebsiteData, CanvasTransformState, SectionInfo } from '../types/type';
 import { ContentHighlightInfo, ContentActionType } from '../useContentHighlights';
 import WebsiteDisplay from './websiteDisplay';
 import { Layers, Eye, EyeOff } from 'lucide-react';
+import { determineGroupType, getGroupDisplayName } from '@/lib/utils';
+import { GroupType } from '@/types/enum';
 
 interface WebsiteGroupProps {
   groupId: string;
@@ -115,37 +117,33 @@ const WebsiteGroup: React.FC<WebsiteGroupProps> = ({
     setIsExpanded(!isExpanded);
   };
 
-  const isFlowGroup = groupId.startsWith('flow-');
-  const isVersionGroup = groupId.startsWith('version-group-');
-  const groupDisplayName =  groupName|| isFlowGroup
-      ? `Flow: ${groupId.replace('flow-', '').substring(0, 8)}...` 
-      : isVersionGroup
-      ? `Versions: ${groupId.replace('version-group-web-', '')}`
-      : `Group: ${groupId}`;
+  const groupType = determineGroupType(groupId);
+  const isVersionGroup = groupType === GroupType.VERSION;
+  const isFlowGroup = groupType === GroupType.FLOW;
 
-  // --- UPDATED SORTING LOGIC ---
+  const groupDisplayName = groupName || getGroupDisplayName(
+    groupType || GroupType.SINGLE,
+    groupId
+  );
+
   const sortedWebsites = [...websites].sort((a, b) => {
-    // Helper to extract version number from title
     const getVersion = (title: string): number | null => {
         const match = title.match(/\(v(\d+)\)$/);
         return match ? parseInt(match[1], 10) : null;
     };
 
     if (isVersionGroup) {
-        // Sort by version number (original is effectively v0)
         const versionA = getVersion(a.title) ?? -1;
         const versionB = getVersion(b.title) ?? -1;
         return versionA - versionB;
     }
 
     if (isFlowGroup) {
-        // 1. Compare by pageName first
         const pageComparison = (a.pageName ?? '').localeCompare(b.pageName ?? '');
         if (pageComparison !== 0) {
             return pageComparison;
         }
 
-        // 2. If pageName is the same, sort by version number (original first)
         const versionA = getVersion(a.title) ?? -1; 
         const versionB = getVersion(b.title) ?? -1;
 

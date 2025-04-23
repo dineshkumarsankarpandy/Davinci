@@ -256,7 +256,7 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
                         if (styleEl.textContent !== cssContent) styleEl.textContent = cssContent;
 
                         setIsLoading(false);
-                        applyFont(); // Apply the selected font after iframe setup
+                        applyFont(); 
                     } else {
                         console.warn("Iframe body or html element not found during load.");
                         setIsLoading(false);

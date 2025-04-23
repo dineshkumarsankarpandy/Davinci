@@ -191,10 +191,8 @@ const CanvasApp: React.FC = () => {
           // --- Update currentMaxY for the next group ---
           // Use the saved group height for accurate spacing
           currentMaxY = groupStartY + groupHeight + VERTICAL_SPACING;
-          // -------------------------------------------
 
-        }); // End groups loop
-
+        }); 
 
         const baseIdToVersions: Record<string, WebsiteData[]> = {};
         loadedWebsites.forEach(website => {
@@ -571,18 +569,15 @@ const CanvasApp: React.FC = () => {
       const nextVersionNumber = existingVersionsCount + 1;
 
       // Simple approach: position relative to the last website in the array
-      let newX = HORIZONTAL_PLACEMENT_X; // Default X if no websites exist
+      let newX = actionedWebsite.position.x; // Default X if no websites exist
       let newY = actionedWebsite.position.y; // Keep the same Y position
 
       if (generatedWebsites.length > 0) {
         // Get the last website in the array
         const lastWebsite = generatedWebsites[generatedWebsites.length - 1];
-        const lastWebsiteWidth = websiteSizes[lastWebsite.id]?.width ||
-          lastWebsite.width ||
-          DEFAULT_WEBSITE_WIDTH;
+        
 
         // Position to the right of the last website
-        newX = lastWebsite.position.x + lastWebsiteWidth + HORIZONTAL_VERSION_SPACING;
 
         console.log(`[Regen] Positioning based on last website: ${lastWebsite.id} at position x:${lastWebsite.position.x}`);
       }
