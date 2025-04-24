@@ -4,6 +4,7 @@ import './App.css'
 import DisableZoom from './lib/disableZoom';
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
 import AuthGuard from './utils/authGaurd';
+import GuestGuard from './utils/guestGuard';
 import LandingPage from './landingPage/page';
 import { Dashboard } from './dashboard/dashboard';
 import { Toaster } from 'react-hot-toast';
@@ -26,7 +27,11 @@ const DashboardLayout = () => {
 const router = createBrowserRouter([
   {
     path: '/login',
-    element: <LoginForm />
+    element:( 
+      <GuestGuard>
+    <LoginForm />
+    </GuestGuard>
+  )
   },
   {
     path: '/',
@@ -34,7 +39,11 @@ const router = createBrowserRouter([
   },
   {
     path:'/sign-in',
-    element:<RegistrationForm/>
+    element:(
+      <GuestGuard>
+    <RegistrationForm/>
+      </GuestGuard>
+    )
   },
   {
     path: '/canvas/:projectId',
