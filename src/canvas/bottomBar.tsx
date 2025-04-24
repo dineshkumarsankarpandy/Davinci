@@ -1,4 +1,3 @@
-// src/components/BottomBar.tsx
 import React, { useCallback } from 'react';
 import { ReactInfiniteCanvasHandle } from 'react-infinite-canvas';
 import { Button } from '@/components/ui/button';
@@ -33,7 +32,6 @@ const BottomBar: React.FC<BottomBarProps> = ({ canvasRef, currentZoom }) => {
     try {
         const canvasState = currentRef.getCanvasState();
 
-        // Use specific types and provide checks
         const zoomBehavior = canvasState?.d3Zoom as CanvasZoomBehavior | undefined;
         const canvasNodeSelection = canvasState?.canvasNode as CanvasSelection | undefined;
 
@@ -44,13 +42,10 @@ const BottomBar: React.FC<BottomBarProps> = ({ canvasRef, currentZoom }) => {
         }
 
         // --- D3 Transition and Zoom ---
-        // 1. Start a transition on the selection.
-        // 2. Set the duration for this transition.
-        // 3. Call the zoom behavior's method on the transitioning selection.
         canvasNodeSelection
-            .transition() // Start a default transition
-            .duration(150) // Set the duration on the transition object
-            .call(zoomBehavior.scaleBy, factor); // Call scaleBy
+            .transition()
+            .duration(150)
+            .call(zoomBehavior.scaleBy, factor); 
 
     } catch (error) {
         console.error("Error during zoom action:", error);
@@ -58,7 +53,6 @@ const BottomBar: React.FC<BottomBarProps> = ({ canvasRef, currentZoom }) => {
     }
   }, [canvasRef]);
 
-  // handleZoomIn and handleZoomOut remain the same
   const handleZoomIn = useCallback(() => {
     handleZoom(1.2);
   }, [handleZoom]);
@@ -67,7 +61,6 @@ const BottomBar: React.FC<BottomBarProps> = ({ canvasRef, currentZoom }) => {
     handleZoom(1 / 1.2);
   }, [handleZoom]);
 
-  // handleFitContent remains the same
   const handleFitContent = useCallback(() => {
     if (!canvasRef.current) {
         console.warn("Canvas ref not available yet for fit content action.");

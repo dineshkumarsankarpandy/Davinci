@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { Send, AlertTriangle, Loader2, Plus, X, Sparkles, Trash2, Image as ImageIcon, WandSparkles, Expand, Smartphone, Monitor, Tablet } from 'lucide-react';
+import { Send, AlertTriangle, Loader2, X, Trash2, Image as ImageIcon, WandSparkles, Expand, Smartphone, Monitor, Tablet } from 'lucide-react';
 import ApiService from './services/apiService';
 import { getErrorMessage } from './lib/errorHandling';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
+// import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
@@ -31,15 +31,15 @@ interface SideNavbarProps {
 const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error }) => {
     const [prompt, setPrompt] = useState<string>('');
     const [pages, setPages] = useState<string[]>([]);
-    const [newPageName, setNewPageName] = useState<string>('');
-    const [isAutoFlowLoading, setIsAutoFlowLoading] = useState<boolean>(false);
-    const [flowError, setFlowError] = useState<string | null>(null);
+    // const [newPageName, setNewPageName] = useState<string>('');
+    // const [isAutoFlowLoading, setIsAutoFlowLoading] = useState<boolean>(false);
+    // const [flowError, setFlowError] = useState<string | null>(null);
     const [isPromptEnhancerLoading, setIsPromptEnhancerLoading] = useState<boolean>(false);
     const [enhanceError, setEnhanceError] = useState<string| null>(null);
     const [expandedTextarea, setExpandedTextarea] = useState<boolean>(false);
     const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
     const [referenceImageBase64, setReferenceImageBase64] = useState<string | null>(null);
-    const [hasFlowGenerated, setHasFlowGenerated] = useState<boolean>(false);
+    // const [hasFlowGenerated, setHasFlowGenerated] = useState<boolean>(false);
     const [deviceType, setDeviceType] = useState<string>("desktop");
     const fileInputRef = useRef<HTMLInputElement>(null);
     
@@ -49,7 +49,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
     const handleMainSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (prompt.trim() && !isLoading) {
-          setFlowError(null);
+        //   setFlowError(null);
           onGenerate(prompt, pages, referenceImageBase64, deviceType);
         }
       };
@@ -63,45 +63,50 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
         setPrompt(newContent);
     };
 
-    const handleAddPage = () => {
-        if (newPageName.trim()) {
-            setPages(prevPages => [...prevPages, newPageName.trim()]);
-            setNewPageName('');
-            setFlowError(null);
+
+// FUTURE FEATURES --------------------
+    // const handleAddPage = () => {
+    //     if (newPageName.trim()) {
+    //         setPages(prevPages => [...prevPages, newPageName.trim()]);
+    //         setNewPageName('');
+    //         setFlowError(null);
         
-        }
-    };
+    //     }
+    // };
 
-    const handleRemovePage = (indexToRemove: number) => {
-        setPages(prevPages => prevPages.filter((_, index) => index !== indexToRemove));
-    };
+    // const handleRemovePage = (indexToRemove: number) => {
+    //     setPages(prevPages => prevPages.filter((_, index) => index !== indexToRemove));
+    // };
 
-    const handleDeleteAllFlow = () => {
-        setPages([]);
-        setHasFlowGenerated(false);
-        setFlowError(null);
-    };
+    // const handleDeleteAllFlow = () => {
+    //     setPages([]);
+    //     setHasFlowGenerated(false);
+    //     setFlowError(null);
+    // };
 
-    const handleAutoFlow = async () => {
-        if (!prompt.trim()) {
-            setFlowError("Please enter a prompt first to suggest a flow.");
-            return;
-        }
-        setIsAutoFlowLoading(true);
-        setFlowError(null);
+    // const handleAutoFlow = async () => {
+    //     if (!prompt.trim()) {
+    //         setFlowError("Please enter a prompt first to suggest a flow.");
+    //         return;
+    //     }
+    //     setIsAutoFlowLoading(true);
+    //     setFlowError(null);
 
-        try {
-            const suggestedPages = await ApiService.generateFlow(prompt);
-            setPages(suggestedPages);
-            setHasFlowGenerated(true);
-        } catch (err: any) {
-            console.error("Error generating auto flow:", err);
-            setFlowError(err.message || "Failed to generate flow.");
-            setPages([]);
-        } finally {
-            setIsAutoFlowLoading(false);
-        }
-    };
+    //     try {
+    //         const suggestedPages = await ApiService.generateFlow(prompt);
+    //         setPages(suggestedPages);
+    //         setHasFlowGenerated(true);
+    //     } catch (err: any) {
+    //         console.error("Error generating auto flow:", err);
+    //         setFlowError(err.message || "Failed to generate flow.");
+    //         setPages([]);
+    //     } finally {
+    //         setIsAutoFlowLoading(false);
+    //     }
+    // };
+
+
+
 
    // Enhance the prompt
    const handleEnhancePrompt = async() =>{
@@ -285,7 +290,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                                         <SelectItem value="desktop">
                                             <div className="flex items-center">
                                                 <Monitor className="h-4 w-4 mr-2" />
-                                                <span>Desktop</span>
+                                                <span>Website</span>
                                             </div>
                                         </SelectItem>
                                         <SelectItem value="mobile">
@@ -306,8 +311,9 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
 
                             <Separator />
 
+
                             {/* Design Flow Section - Disable if image is selected? */}
-                            <div className={`space-y-3 ${referenceImageBase64 ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                           {/* <div className={`space-y-3 ${referenceImageBase64 ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                 <div className="flex items-center justify-between">
                                     <Label>Design Flow (Optional)</Label>
                                     {pages.length > 0 && !referenceImageBase64 && (
@@ -326,7 +332,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                                 {referenceImageBase64 && (
                                     <p className="text-xs text-orange-600">Flow generation is disabled when a reference image is used (image generation creates a single page).</p>
                                 )}
-                                <div className="flex gap-2">
+                                 <div className="flex gap-2">
                                     <Input
                                         type="text"
                                         value={newPageName}
@@ -400,9 +406,12 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                                         </ScrollArea>
                                     </div>
                                 )}
+
                             </div>
 
-                            <Separator />
+                            {/* <Separator />  */}
+
+
 
                             <Button
                                 type="submit"
@@ -439,8 +448,7 @@ const SideNavbar: React.FC<SideNavbarProps> = ({ onGenerate, isLoading, error })
                             <li>• Describe the desired output in the context box.</li>
                             <li>• Select the target device type for your design.</li>
                             <li>• Optionally add a reference image for visual guidance (generates a single page).</li>
-                            <li>• Optionally define a multi-page flow (if no image is used).</li>
-                            <li>• "Generate" uses context + image (if present) or context + flow.</li>
+                            <li>• "Generate" uses context + image (if present) or context alone.</li>
                         </ul>
                     </div>
                 </CardFooter>

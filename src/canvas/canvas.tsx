@@ -1124,7 +1124,7 @@ const handleSaveCanvas = async () => {
           // panOnScroll
 
           className="w-full h-full"
-          backgroundConfig={{ backgroundColor: 'lightgrey' }}
+          backgroundConfig={{ disable: true }} // Disable default background
         // No 'elements' prop needed
         >
           {/* <EventBlocker shouldBlockZoom={true}> */}

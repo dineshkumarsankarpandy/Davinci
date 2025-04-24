@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, X, ChevronLeft, ChevronRight, Home, LayoutDashboard, Star, LogOut } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from "react-router-dom";
-import { ModeToggle } from './mode-toggle';
+// import { ModeToggle } from './mode-toggle';
 import SubscriptionPlan from './subscriptionCard';
 
 interface SidebarProps {
@@ -119,11 +119,11 @@ export function Sidebar({ className }: SidebarProps) {
               </Button>
             </div>
 
-            <div className="h-14 flex items-center justify-between px-3 border-t">
+            {/* <div className="h-14 flex items-center justify-between px-3 border-t">
               <span className={cn("font-medium", !isCollapsed && "ml-3")}>
                 <ModeToggle />
               </span>
-            </div>
+            </div> */}
           </div>
         </SheetContent>
       </Sheet>
@@ -203,9 +203,9 @@ export function Sidebar({ className }: SidebarProps) {
               {isCollapsed ? "Expand" : "Collapse"}
             </span>
           </Button>
-          <span className={cn("font-medium", !isCollapsed && "ml-3")}>
+          {/* <span className={cn("font-medium", !isCollapsed && "ml-10")}>
             <ModeToggle />
-          </span>
+          </span> */}
         </div>
       </div>
     </>

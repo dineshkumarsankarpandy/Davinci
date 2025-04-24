@@ -19,13 +19,13 @@ const SubscriptionPlan = () => {
       <CardContent className="pb-2">
         <CardTitle className="text-2xl font-bold mb-0">No plan active</CardTitle>
         <CardDescription className="text-gray-300">
-          You don't have an active subscription.
+          Beta version. No credit card required.
         </CardDescription>
       </CardContent>
       <CardFooter>
         <Button
           variant="outline"
-          className="w-full bg-transparent border-gray-700 text-white hover:bg-gray-800 hover:text-white"
+          className="w-full bg-transparent border-gray-700 text-white hover:bg-gray-800 hover:text-white cursor-not-allowed"
         >
           See pricing plans
         </Button>
