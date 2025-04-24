@@ -14,9 +14,10 @@ import toast, { Toaster } from 'react-hot-toast';
 import { useNavigate } from "react-router-dom";
 import apiClient from "@/services/api";
 import { Chrome, Github, Loader2 } from "lucide-react";
+import axios from "axios";
 
 export default function RegistrationForm() {
-  const [email, setEmail] = useState<string>("");
+  const [mail, setMail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
@@ -46,8 +47,8 @@ export default function RegistrationForm() {
     setIsLoading(true);
 
     try {
-      const response = await apiClient.post("/auth/register", {
-        email,
+      const response = await axios.post("http://localhost:8000/auth/register", {
+        mail,
         password,
       });
 
@@ -127,8 +128,8 @@ export default function RegistrationForm() {
                   id="email"
                   type="email"
                   placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={mail}
+                  onChange={(e) => setMail(e.target.value)}
                   required
                   disabled={isLoading}
                   className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"

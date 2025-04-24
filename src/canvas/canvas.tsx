@@ -35,6 +35,7 @@ import { getErrorMessage } from '@/lib/errorHandling';
 import { ContentHighlightInfo, ContentActionType } from '../useContentHighlights';
 import { parse_title_and_version } from '@/lib/utils';
 import BottomBar from './bottomBar';
+import { LogOut } from 'lucide-react';
 
 
 
@@ -235,7 +236,7 @@ const CanvasApp: React.FC = () => {
 
             // Find the actual base website object in the sorted list (should be the first)
             const baseWebsite = versions[0];
-            if (!baseWebsite) return; // Should not happen, but safeguard
+            if (!baseWebsite) return;
 
             const baseX = baseWebsite.position.x; // Use the X position already set
             const baseY = baseWebsite.position.y; // Use the Y position calculated in the groups loop
@@ -1041,6 +1042,16 @@ const handleSaveCanvas = async () => {
   
 
 
+  //handling logout.
+
+  const handleLogout = () => {
+    localStorage.clear();
+    toast.success("Logged out successfully.");
+    navigate("/");
+  };
+
+
+
   // --- Render ---
   const { grouped, ungrouped } = groupedWebsites();
 
@@ -1059,6 +1070,15 @@ const handleSaveCanvas = async () => {
               isSaving={isSaving}
               canSave={!isLoading && !isSaving}
            />
+
+        
+          <button
+            onClick={handleLogout}
+            title='Logout'
+            className="absolute top-4 right-4 z-50 flex items-center gap-2 p-2 bg-white text-black rounded-lg shadow hover:bg-gray-200 transition"
+          >
+            <LogOut size={18} />
+          </button>
 
         <ReactInfiniteCanvas
           ref={canvasRef}
