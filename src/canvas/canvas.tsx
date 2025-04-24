@@ -2,7 +2,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { ReactInfiniteCanvas, ReactInfiniteCanvasHandle } from 'react-infinite-canvas';
 import toast from 'react-hot-toast';
-import { useParams, useLocation, useNavigate  } from 'react-router-dom';
+import { useParams, useLocation, useNavigate,useBlocker} from 'react-router-dom';
 
 import SideNavbar from '../sidebar';
 import WebsiteDisplay from './websiteDisplay';
@@ -85,6 +85,23 @@ const CanvasApp: React.FC = () => {
   const [groupNameMap, setGroupNameMap] = useState<Record<string, string>>({});
   const [groupDbIdMap, setGroupDbIdMap] = useState<Record<string, number>>({});
   const [screenDbIdMap, setScreenDbIdMap] = useState<Record<string, number>>({});
+
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
+  useNavigationBlocker(hasUnsavedChanges);
+
+  // --- Navigation Blocker ---
+  function useNavigationBlocker(when: boolean) {
+    const blocker = useBlocker(when);
+    useEffect(() => {
+      if (blocker.state === 'blocked') {
+        if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
+          blocker.proceed();
+        } else {
+          blocker.reset();
+        }
+      }
+    }, [blocker]);
+  }
 
 
 
@@ -395,6 +412,7 @@ const CanvasApp: React.FC = () => {
           pageName: null,
         };
         setGeneratedWebsites(prev => [...prev, newWebsite]);
+        setHasUnsavedChanges(true);
         setActiveWebsiteId(newWebsite.id);
       }
       else if (pages.length === 0) {
@@ -413,6 +431,7 @@ const CanvasApp: React.FC = () => {
           pageName: null,
         };
         setGeneratedWebsites(prev => [...prev, newWebsite]);
+        setHasUnsavedChanges(true);
         setActiveWebsiteId(newWebsite.id);
         console.log("Single page generated:", newWebsite.id);
       } else {
@@ -447,6 +466,7 @@ const CanvasApp: React.FC = () => {
 
         setGeneratedWebsites(prev => [...prev, ...newWebsites]);
         setActiveGroupId(newGroupId);
+        setHasUnsavedChanges(true);
         console.log("Multi-page group generated:", newGroupId, newWebsites.map(w => w.id));
       }
     } catch (err: any) {
@@ -571,23 +591,19 @@ const CanvasApp: React.FC = () => {
       const originalGroupId = actionedWebsite.groupId;
       const originalPageName = actionedWebsite.pageName;
 
-      // Count existing versions to determine next version number
       const existingVersionsCount = generatedWebsites.filter(w => {
         const versionPattern = new RegExp(`^${baseTitle}\\s*\\(v\\d+\\)$`);
         return versionPattern.test(w.title);
       }).length;
       const nextVersionNumber = existingVersionsCount + 1;
 
-      // Simple approach: position relative to the last website in the array
-      let newX = actionedWebsite.position.x; // Default X if no websites exist
-      let newY = actionedWebsite.position.y; // Keep the same Y position
+      let newX = actionedWebsite.position.x; 
+      let newY = actionedWebsite.position.y; 
 
       if (generatedWebsites.length > 0) {
-        // Get the last website in the array
         const lastWebsite = generatedWebsites[generatedWebsites.length - 1];
         
 
-        // Position to the right of the last website
 
         console.log(`[Regen] Positioning based on last website: ${lastWebsite.id} at position x:${lastWebsite.position.x}`);
       }
@@ -610,14 +626,11 @@ const CanvasApp: React.FC = () => {
       const newWebsites = [...generatedWebsites];
       newWebsites.push(newWebsite);
       setGeneratedWebsites(newWebsites);
-
-      // Set active states
+      setHasUnsavedChanges(true); 
       setActiveWebsiteId(newWebsite.id);
       if (originalGroupId) {
         setActiveGroupId(originalGroupId);
       }
-
-      // Ensure content fits to view after DOM update
       setTimeout(() => {
         canvasRef.current?.fitContentToView({ duration: 600 });
       }, 500);
@@ -630,32 +643,32 @@ const CanvasApp: React.FC = () => {
       closeRegenerateModal();
     }
   };
+
+
+
   const submitEditContent = (newContent: string) => {
     if (!editContentModal.websiteId || !editContentModal.contentInfo) return;
     setIsUpdatingContent(true);
     setError(null);
     const { websiteId, contentInfo } = editContentModal;
-    const oldOuterHtml = contentInfo.outerHTML; // Keep for fallback identification if needed
-
+    const oldOuterHtml = contentInfo.outerHTML; 
     try {
       setGeneratedWebsites(prev => prev.map(site => {
         if (site.id === websiteId) {
           const parser = new DOMParser();
           const siteDoc = parser.parseFromString(site.htmlContent, 'text/html');
-          // Prefer data-content-id for reliability
           const contentId = contentInfo.element.dataset.contentId;
           const elementToModify = contentId ? siteDoc.querySelector(`[data-content-id="${contentId}"]`) : null;
 
           let found = false;
           if (elementToModify instanceof HTMLElement) {
             elementToModify.textContent = newContent;
-            // Serialize the whole document back to string
             const finalHtml = `<!DOCTYPE html>${siteDoc.documentElement.outerHTML}`;
             console.log("Updated content via DOM manipulation (data-content-id)");
             found = true;
+            setHasUnsavedChanges(true);
             return { ...site, htmlContent: finalHtml };
           } else {
-            // Fallback: Simple string replacement (less reliable)
             if (site.htmlContent.includes(oldOuterHtml)) {
               const tempParser = new DOMParser();
               const tempDoc = tempParser.parseFromString(oldOuterHtml, 'text/html');
@@ -666,16 +679,16 @@ const CanvasApp: React.FC = () => {
                 const updatedHtmlString = site.htmlContent.replace(oldOuterHtml, newOuterHtml);
                 console.warn("Updated content via string replace (fallback)");
                 found = true;
+                setHasUnsavedChanges(true);
                 return { ...site, htmlContent: updatedHtmlString };
               }
             }
           }
-
           if (!found) {
             console.warn("Edit Content: Target element or old HTML fragment not found. Update skipped.");
             setError("Update failed: Content mismatch or element not found.");
           }
-          return site; // Return unchanged site if update failed
+          return site; 
         }
         return site;
       }));
@@ -713,6 +726,7 @@ const CanvasApp: React.FC = () => {
             const finalHtml = `<!DOCTYPE html>${siteDoc.documentElement.outerHTML}`;
             console.log("AI Update via DOM manipulation (data-content-id)");
             found = true;
+            setHasUnsavedChanges(true);
             return { ...site, htmlContent: finalHtml };
           } else {
             // Fallback: String replacement
@@ -725,6 +739,7 @@ const CanvasApp: React.FC = () => {
                 const updatedElementHtml = tempElement.outerHTML;
                 const updatedHtmlString = site.htmlContent.replace(oldOuterHtml, updatedElementHtml);
                 found = true;
+                setHasUnsavedChanges(true); 
                 console.warn("AI Update: Used fallback string replacement.");
                 return { ...site, htmlContent: updatedHtmlString };
               }
@@ -754,6 +769,7 @@ const CanvasApp: React.FC = () => {
         website.id === websiteId ? { ...website, htmlContent: newHtmlContent } : website
       )
     );
+    setHasUnsavedChanges(true);
   }, []);
 
 
@@ -963,6 +979,7 @@ const handleSaveCanvas = async () => {
       }
     setGroupDbIdMap(newGroupDbIdMap);
       toast.success('Project saved successfully!', { id: saveToastId });
+      setHasUnsavedChanges(false);
 
     
 
@@ -975,6 +992,19 @@ const handleSaveCanvas = async () => {
       setIsSaving(false);
     }
   };
+
+
+// Warn on tab/browser close
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
 
 

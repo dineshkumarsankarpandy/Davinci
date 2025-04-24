@@ -150,7 +150,7 @@ export default function LoginForm() {
                   <Button 
                     type="button" 
                     variant="outline" 
-                    className="w-1/2 bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+                    className="w-1/2 bg-gray-700 border-gray-600 text-white hover:bg-gray-600 cursor-not-allowed"
                     onClick={handleGoogleLogin}
                   >
                     <Chrome className="mr-2 h-4 w-4" />
@@ -175,20 +175,23 @@ export default function LoginForm() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-2">
-              <Button
+                <Button
                 type="submit"
                 className="w-full mt-4 bg-purple-600 hover:bg-purple-500 text-white"
                 disabled={isLoading}
-              >
+                >
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing In...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing In...
                   </>
                 ) : (
                   "Sign In"
                 )}
-              </Button>
+                {/* {isLoading && setTimeout(() => navigate("/dashboard"), 5000)} */}
+                </Button>
+                
+             
               <p className="text-sm text-gray-400 text-center">
                 Don't have an account?{" "}
                 <a href="/sign-in" className="text-purple-400 hover:underline">
