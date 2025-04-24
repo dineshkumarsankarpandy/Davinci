@@ -1,5 +1,5 @@
 import CanvasApp from './canvas/canvas'
-import LoginForm from './modal/login';
+import LoginForm from './regsitration/login';
 import './App.css'
 import DisableZoom from './lib/disableZoom';
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
@@ -8,7 +8,8 @@ import LandingPage from './landingPage/page';
 import { Dashboard } from './dashboard/dashboard';
 import { Toaster } from 'react-hot-toast';
 import DesignReview from './review-design';
-import { Sidebar } from './dashboard/sidebar'; // Adjust the import path as needed
+import { Sidebar } from './dashboard/sidebar'; 
+import RegistrationForm from './regsitration/signIn';
 
 // Layout component with Sidebar
 const DashboardLayout = () => {
@@ -30,6 +31,10 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <LandingPage />
+  },
+  {
+    path:'/sign-in',
+    element:<RegistrationForm/>
   },
   {
     path: '/canvas/:projectId',
