@@ -4,7 +4,9 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, X, ChevronLeft, ChevronRight, Home, LayoutDashboard, Star } from 'lucide-react';
+import { Menu, X, ChevronLeft, ChevronRight, Home, LayoutDashboard, Star, LogOut } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useNavigate } from "react-router-dom";
 import { ModeToggle } from './mode-toggle';
 import SubscriptionPlan from './subscriptionCard';
 
@@ -26,6 +28,7 @@ interface SidebarNavProps {
 export function Sidebar({ className }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const navigate = useNavigate();
 
   // Handle window resize for responsiveness
   useEffect(() => {
@@ -44,6 +47,12 @@ export function Sidebar({ className }: SidebarProps) {
   if (!isMounted) {
     return null;
   }
+
+  const handleLogout = () => {
+    localStorage.clear();
+    toast.success("Logged out successfully.");
+    navigate("/");
+  };
 
   const links: SidebarNavProps['links'] = [
     {
@@ -98,6 +107,18 @@ export function Sidebar({ className }: SidebarProps) {
               <SubscriptionPlan />
             </div>
 
+            {/* Logout button for mobile */}
+            <div className="px-3 py-2 border-t">
+              <Button 
+                variant="ghost" 
+                className="w-full flex items-center justify-start text-red-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-5 w-5 mr-2" />
+                Logout
+              </Button>
+            </div>
+
             <div className="h-14 flex items-center justify-between px-3 border-t">
               <span className={cn("font-medium", !isCollapsed && "ml-3")}>
                 <ModeToggle />
@@ -137,6 +158,33 @@ export function Sidebar({ className }: SidebarProps) {
             <SubscriptionPlan />
           </div>
         )}
+        
+        {/* Logout button for desktop */}
+        <div className={cn(
+          "px-3 py-2 border-t",
+          isCollapsed && "flex justify-center"
+        )}>
+          {isCollapsed ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 text-red-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20"
+              onClick={handleLogout}
+              title="Logout"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              className="w-full flex items-center justify-start text-red-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-5 w-5 mr-2" />
+              Logout
+            </Button>
+          )}
+        </div>
           
         {/* Bottom section with toggle */}
         <div className="h-14 flex items-center border-t px-3">

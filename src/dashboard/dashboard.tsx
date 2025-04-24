@@ -65,7 +65,6 @@ export function Dashboard() {
     fetchProjects();
   }, []);
 
-  // Filter projects based on search query
   useEffect(() => {
     if (searchQuery.trim() === '') {
       setFilteredProjects(projects);
