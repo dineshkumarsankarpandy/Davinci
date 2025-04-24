@@ -147,6 +147,15 @@ const ApiService = {
     }
   },
 
+  deleteScreen: async (screenId: number | string): Promise<void> => {
+    try {
+      await apiClient.delete(`/canvas/delete-screen/${screenId}`);
+    } catch (error) {
+      console.error(`API Error deleting screen ${screenId}:`, error);
+      throw new Error(getErrorMessage(error));
+    }
+  },
+
   saveCanvasState: async (projectId: number | string, payload: CanvasSaveRequest): Promise<CanvasSaveResponse> => {
     try {
       const response = await apiClient.put<CanvasSaveResponse>(`/canvas/save-changes/${projectId}`, payload);
@@ -169,6 +178,16 @@ const ApiService = {
         }
         throw error;
     }
+},
+
+
+deleteGroup: async (groupId: number | string): Promise<void> => {
+  try {
+    await apiClient.delete(`/canvas/delete-group/${groupId}`);
+  } catch (error) {
+    console.error(`API Error deleting group ${groupId}:`, error);
+    throw new Error(getErrorMessage(error));
+  }
 },
 
 startReveiw: async (payload: DesignReviewRequest): Promise<DesignReviewResponse> => {

@@ -116,6 +116,17 @@ export interface CanvasSaveRequest {
 export interface CanvasSaveResponse {
   message: string;
   project_id: number;
+  groups: {
+    frontendId: string;
+    dbId: number;
+    screens: {
+      baseFrontendId?: string;
+      id: number; 
+      versions: {
+        id: string;
+      }[];
+    }[];
+  }[];
 }
 
 // --- Canvas Load ---

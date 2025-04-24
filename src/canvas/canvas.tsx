@@ -82,6 +82,8 @@ const CanvasApp: React.FC = () => {
   const [editContentValue, setEditContentValue] = useState('');
 
   const [groupNameMap, setGroupNameMap] = useState<Record<string, string>>({});
+  const [groupDbIdMap, setGroupDbIdMap] = useState<Record<string, number>>({});
+  const [screenDbIdMap, setScreenDbIdMap] = useState<Record<string, number>>({});
 
 
 
@@ -129,6 +131,8 @@ const CanvasApp: React.FC = () => {
         const loadedWebsites: WebsiteData[] = [];
         const loadedSizes: Record<string, { width: number, height: number }> = {};
         const groupNames: Record<string, string> = {};
+        const loadedGroupDbIdMap: Record<string, number> = {};
+        const loadedScreenDbIdMap: Record<string, number> = {};
 
         let currentMaxY = 100; // Initial vertical position for the first group
 
@@ -146,8 +150,8 @@ const CanvasApp: React.FC = () => {
           const groupFrontendId = group.metadata?.frontendId ?? `db-group-${group.id}`;
           if (group.name) {
             groupNames[groupFrontendId] = group.name;
+            loadedGroupDbIdMap[groupFrontendId] = group.id; // Store the DB ID for later use
           }
-
           const groupStartY = currentMaxY;
           const groupHeight = group.metadata?.size?.height ?? DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT; // Fallback height
 
@@ -155,6 +159,7 @@ const CanvasApp: React.FC = () => {
           // --- Process Screens within this Group ---
           group.screens.forEach(screen => {
             const baseScreenFrontendId = screen.metadata?.frontendId ?? `db-screen-${screen.id}`;
+            const screenDbId = screen.id;
             const screenPositionX = screen.metadata?.position?.x ?? HORIZONTAL_PLACEMENT_X;
             const size = screen.metadata?.size ?? { width: DEFAULT_WEBSITE_WIDTH, height: DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT };
             const pageName = screen.metadata?.pageName ?? null;
@@ -168,6 +173,7 @@ const CanvasApp: React.FC = () => {
               const versionedTitle = version.version_number === 1 || version.version_number === 0
                 ? baseTitle
                 : `${baseTitle} (v${version.version_number})`;
+                loadedScreenDbIdMap[versionFrontendId] = screenDbId;
 
               const website: WebsiteData = {
                 id: versionFrontendId,
@@ -250,8 +256,10 @@ const CanvasApp: React.FC = () => {
 
 
         setGeneratedWebsites(loadedWebsites);
-        setWebsiteSizes(loadedSizes); // Use the sizes loaded from screen metadata
+        setWebsiteSizes(loadedSizes);
         setGroupNameMap(groupNames);
+        setGroupDbIdMap(loadedGroupDbIdMap);
+        setScreenDbIdMap(loadedScreenDbIdMap);
 
       } catch (err: any) {
          console.error("Error loading canvas state:", err);
@@ -449,46 +457,47 @@ const CanvasApp: React.FC = () => {
   };
 
 
+ 
+  
+  // const handleDeleteScreen = (id: string) => {
+  //   const websiteToDelete = generatedWebsites.find(w => w.id === id);
+  //   if (!websiteToDelete) return;
 
-  const handleDeleteWebsite = (id: string) => {
-    const websiteToDelete = generatedWebsites.find(w => w.id === id);
-    if (!websiteToDelete) return;
+  //   const groupId = websiteToDelete.groupId;
+  //   const isVersion = websiteToDelete.title.match(/\(v\d+\)$/);
+  //   let associatedIdsToDelete: string[] = [id];
 
-    const groupId = websiteToDelete.groupId;
-    const isVersion = websiteToDelete.title.match(/\(v\d+\)$/);
-    let associatedIdsToDelete: string[] = [id];
+  //   if (!isVersion && !groupId) {
+  //     const versionGroupId = `version-group-${id}`;
+  //     generatedWebsites.forEach(w => {
+  //       if (getWebsiteGroupId(w) === versionGroupId) {
+  //         associatedIdsToDelete.push(w.id);
+  //       }
+  //     });
+  //   }
 
-    if (!isVersion && !groupId) {
-      const versionGroupId = `version-group-${id}`;
-      generatedWebsites.forEach(w => {
-        if (getWebsiteGroupId(w) === versionGroupId) {
-          associatedIdsToDelete.push(w.id);
-        }
-      });
-    }
+  //   setGeneratedWebsites(prev => prev.filter(w => !associatedIdsToDelete.includes(w.id)));
 
-    setGeneratedWebsites(prev => prev.filter(w => !associatedIdsToDelete.includes(w.id)));
+  //   if (associatedIdsToDelete.includes(activeWebsiteId ?? '')) {
+  //     setActiveWebsiteId(null);
+  //   }
 
-    if (associatedIdsToDelete.includes(activeWebsiteId ?? '')) {
-      setActiveWebsiteId(null);
-    }
-
-    if (groupId && activeGroupId === groupId) {
-      const remainingInGroup = generatedWebsites.filter(w => w.groupId === groupId && !associatedIdsToDelete.includes(w.id));
-      if (remainingInGroup.length === 0) {
-        setActiveGroupId(null);
-      }
-    }
-    const potentialVersionGroupId = isVersion ? getWebsiteGroupId(websiteToDelete) : `version-group-${id}`;
-    if (potentialVersionGroupId && activeGroupId === potentialVersionGroupId) {
-      const remainingInGroup = generatedWebsites.filter(w =>
-        getWebsiteGroupId(w) === potentialVersionGroupId && !associatedIdsToDelete.includes(w.id)
-      );
-      if (remainingInGroup.length === 0) {
-        setActiveGroupId(null);
-      }
-    }
-  };
+  //   if (groupId && activeGroupId === groupId) {
+  //     const remainingInGroup = generatedWebsites.filter(w => w.groupId === groupId && !associatedIdsToDelete.includes(w.id));
+  //     if (remainingInGroup.length === 0) {
+  //       setActiveGroupId(null);
+  //     }
+  //   }
+  //   const potentialVersionGroupId = isVersion ? getWebsiteGroupId(websiteToDelete) : `version-group-${id}`;
+  //   if (potentialVersionGroupId && activeGroupId === potentialVersionGroupId) {
+  //     const remainingInGroup = generatedWebsites.filter(w =>
+  //       getWebsiteGroupId(w) === potentialVersionGroupId && !associatedIdsToDelete.includes(w.id)
+  //     );
+  //     if (remainingInGroup.length === 0) {
+  //       setActiveGroupId(null);
+  //     }
+  //   }
+  // };
 
   // --- Activation Handlers ---
   const handleSetActiveWebsite = (id: string) => {
@@ -935,7 +944,26 @@ const handleSaveCanvas = async () => {
       // --- API Call ---
       const response = await ApiService.saveCanvasState(projectId, payload);
       console.log("Save response:", response);
+      const newScreenDbIdMap = { ...screenDbIdMap };
+     
+
+      const newGroupDbIdMap = { ...groupDbIdMap };
+      if (response?.groups) {
+        response.groups.forEach(group => {
+          if (group.frontendId && group.dbId) {
+            newGroupDbIdMap[group.frontendId] = group.dbId;
+          }
+          (group.screens ?? []).forEach(screen => {
+            (screen.versions ?? []).forEach(version => {
+              newScreenDbIdMap[version.id] = screen.id;
+            });
+          });
+        });
+      }
+    setGroupDbIdMap(newGroupDbIdMap);
       toast.success('Project saved successfully!', { id: saveToastId });
+
+    
 
     } catch (err: any) {
       console.error("Save Error:", err);
@@ -944,6 +972,70 @@ const handleSaveCanvas = async () => {
       toast.error(`Save failed: ${errorMsg}`, { id: saveToastId });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+
+
+// DELETING THE GROUP.
+  const handleDeleteGroup = async (groupId: string) => {
+    try {
+      const dbGroupId = groupDbIdMap[groupId];
+      if (dbGroupId) {
+        await ApiService.deleteGroup(dbGroupId);
+      }
+      setGeneratedWebsites(prev => prev.filter(w => 
+        !(w.groupId === groupId || getWebsiteGroupId(w) === groupId)
+      ));
+      setGroupDbIdMap(prev => {
+        const newMap = { ...prev };
+        delete newMap[groupId];
+        return newMap;
+      });
+      if (activeGroupId === groupId) {
+        setActiveGroupId(null);
+      }
+      toast.success('Group deleted successfully!');
+    } catch (err: any) {
+      console.error("Delete group error:", err);
+      toast.error(`Failed to delete group: ${getErrorMessage(err)}`);
+    }
+  };
+
+
+// Deletting the screen.
+  const handleDeleteScreen = async (id: string) => {
+    const websiteToDelete = generatedWebsites.find(w => w.id === id);
+    if (!websiteToDelete) return;
+  
+    const screenDbId = screenDbIdMap[id];
+
+    const groupId = websiteToDelete.groupId;
+    const toastId = toast.loading('Deleting screen...');
+    try {
+      if (screenDbId) {
+        await ApiService.deleteScreen(screenDbId); 
+      }
+  
+      setGeneratedWebsites(prev => prev.filter(w => w.id !== id));
+  
+      if (activeWebsiteId === id) {
+        setActiveWebsiteId(null);
+      }
+      if (groupId && activeGroupId === groupId) {
+        const remainingInGroup = generatedWebsites.filter(
+          w => w.groupId === groupId && w.id !== id
+        );
+        if (remainingInGroup.length === 0) {
+          setActiveGroupId(null);
+        }
+      }
+
+      toast.success("Screen deleted successfully!", { id: toastId });
+  
+    } catch (err: any) {
+      console.error('Delete screen error:', err);
+      toast.error(`Failed to delete screen: ${getErrorMessage(err)}`);
     }
   };
   
@@ -994,7 +1086,7 @@ const handleSaveCanvas = async () => {
                 website={website}
                 isActive={activeWebsiteId === website.id && !activeGroupId}
                 onActivate={handleSetActiveWebsite}
-                onDelete={handleDeleteWebsite}
+                onDelete={handleDeleteScreen}
                 // Pass handlers with correct signature
                 onSectionAction={handleSectionActionRequest}
                 onContentAction={handleContentActionRequest}
@@ -1015,7 +1107,7 @@ const handleSaveCanvas = async () => {
                 websites={websitesInGroup}
                 activeWebsiteId={activeWebsiteId}
                 onActivateWebsite={handleSetActiveWebsite}
-                onDeleteWebsite={handleDeleteWebsite}
+                onDeleteWebsite={handleDeleteScreen}
                 onSectionAction={handleSectionActionRequest}
                 onContentAction={handleContentActionRequest}
                 canvasTransform={canvasTransform}
@@ -1025,6 +1117,7 @@ const handleSaveCanvas = async () => {
                 onWebsiteSizeChange={handleWebsiteSizeChange}
                 initialWebsiteSizes={websiteSizes}
                 onUpdateHtmlContent={handleWebsiteContentChange}
+                onDeleteGroup={handleDeleteGroup}
                
               />
             ))}

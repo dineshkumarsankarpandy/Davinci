@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { WebsiteData, CanvasTransformState, SectionInfo } from '../types/type';
 import { ContentHighlightInfo, ContentActionType } from '../useContentHighlights';
 import WebsiteDisplay from './websiteDisplay';
-import { Layers, Eye, EyeOff } from 'lucide-react';
+import { Layers, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { determineGroupType, getGroupDisplayName } from '@/lib/utils';
 import { GroupType } from '@/types/enum';
 
@@ -23,6 +23,7 @@ interface WebsiteGroupProps {
   onWebsiteSizeChange: (websiteId: string, width: number, height: number) => void;
   initialWebsiteSizes: Record<string, { width: number, height: number }>;
   onUpdateHtmlContent: (websiteId: string, newHtmlContent: string) => void;
+  onDeleteGroup: (groupId: string) => void;
 }
 
 const DEFAULT_WEBSITE_WIDTH = 1440;
@@ -45,6 +46,8 @@ const WebsiteGroup: React.FC<WebsiteGroupProps> = ({
   initialWebsiteSizes,
   onUpdateHtmlContent,
   groupName,
+  onDeleteGroup
+  
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const groupRef = useRef<HTMLDivElement>(null);
@@ -208,14 +211,29 @@ const WebsiteGroup: React.FC<WebsiteGroupProps> = ({
               <Layers size={16} />
               <span className="whitespace-nowrap">{groupDisplayName}</span>
             </div>
-            <button
-              onClick={toggleExpand}
-              title={isExpanded ? "Collapse Group" : "Expand Group"}
-              className={'p-4  transition-colors text-white text-xl shadow-md' }
-            >
-              {isExpanded ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
+
+            <div className="flex items-center">
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        if (window.confirm(`Are you sure you want to delete the group "${groupDisplayName}"?`)) {
+          onDeleteGroup(groupId);
+        }
+      }}
+      title="Delete Group"
+      className={'p-2 transition-colors text-white hover:text-red-300'}
+    >
+      <Trash2 size={14} />
+    </button>
+    <button
+      onClick={toggleExpand}
+      title={isExpanded ? "Collapse Group" : "Expand Group"}
+      className={'p-2 transition-colors text-white text-xl shadow-md'}
+    >
+      {isExpanded ? <EyeOff size={14} /> : <Eye size={14} />}
+    </button>
+  </div>
+</div>
 
       {/* Render websites INSIDE */}
       {isExpanded && sortedWebsites.map((website) => {
