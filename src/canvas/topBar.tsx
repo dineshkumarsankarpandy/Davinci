@@ -33,17 +33,15 @@ const TopBar: React.FC<TopBarProps> = ({
       >
         {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelRightClose size={18} />}
       </Button>
-
       <span className="text-sm font-medium text-gray-700 px-2 truncate" title={projectName}>
         {projectName || 'Loading Project...'}
       </span>
-
       <Button
         variant="default" 
         size="sm" 
         onClick={onSave}
         disabled={isSaving || !canSave} 
-        className="h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-white"
+        className="h-8 px-3 bg-purple-500 hover:bg-purple-600 text-white"
         title={canSave ? 'Save Project' : 'Generate content to save'}
       >
         {isSaving ? (

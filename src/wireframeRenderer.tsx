@@ -1,16 +1,17 @@
-// components/wireframeRenderer.tsx
 import React, { useRef, useState, useEffect, useCallback, RefObject } from 'react';
-import { Pencil, ArrowLeftRight, Star, Grab, Trash2, Target, Bot, Edit3, Sliders } from 'lucide-react';
+import { Pencil, ArrowLeftRight, Star, Grab, Trash2, Target, Bot, Edit3, Sliders, Palette  } from 'lucide-react';
 import useSectionHighlight from './useSectionHighlight';
 import useContentHighlight, { ContentHighlightInfo, ContentActionType } from './useContentHighlights';
 import { createPortal } from 'react-dom';
 import { SectionInfo } from './types/type';
 import FontSelector from './fontSelector';
 import ApiService from './services/apiService';
+import ColorPicker from './colorPicker'; 
+import {  hslToHex } from './utils/colorUtils';
 import RegenerateDesignDialog from './modal/regenerateDesignModal';
 import { getErrorMessage } from './lib/errorHandling';
 import { EventBlocker } from 'react-infinite-canvas';
-// import { Button } from './components/ui/button';
+
 
 interface CanvasTransformState { k: number; x: number; y: number; }
 
@@ -35,6 +36,8 @@ const MIN_HEIGHT = 300;
 const FONT_LINK_ID = 'custom-font-link';
 const availableFonts = ['Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Winky Rough', 'Bungee Spice', 'Amarante', 'Amaranth', 'Amatic SC', 'Amiko', 'Amiri', 'Amita', 'Anaheim', 'Andada Pro'];
 
+
+// --- Toolbar Button Component ---
 const ToolbarButton: React.FC<{
     icon: React.ElementType, label?: string, tooltip: string, onClick?: () => void, className?: string, active?: boolean
 }> = ({ icon: Icon, label, tooltip, onClick, className = '', active = false }) => (
@@ -48,6 +51,36 @@ const ToolbarButton: React.FC<{
         {label && <span className="font-medium whitespace-nowrap">{label}</span>}
     </button>
 );
+
+
+
+// --- Utility Function to Get Accent HSL from HTML String ---
+const getAccentHSLFromHtml = (htmlString: string): { h: number; s: number; l: number } => {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlString, 'text/html');
+    const styleElement = doc.getElementById('novakit-base-styles');
+    if (!styleElement || !styleElement.textContent) {
+      return { h: 254, s: 0.31, l: 0.50 }; 
+    }
+    const cssText = styleElement.textContent;
+    const hMatch = cssText.match(/--accentH:\s*(\d+);/);
+    const sMatch = cssText.match(/--accentS:\s*(\d+)%?;/);
+    const lMatch = cssText.match(/--accentL:\s*(\d+)%?;/);
+    const h = hMatch ? parseInt(hMatch[1], 10) : 254;
+    const s = sMatch ? parseInt(sMatch[1], 10) / 100 : 0.31;
+    const l = lMatch ? parseInt(lMatch[1], 10) / 100 : 0.50;
+    const clampedS = Math.max(0, Math.min(1, s));
+    const clampedL = Math.max(0, Math.min(1, l));
+    return { h, s: clampedS, l: clampedL };
+  } catch (error) {
+    console.error("Error parsing HTML for accent HSL values:", error);
+    return { h: 254, s: 0.31, l: 0.50 }; 
+  }
+};
+
+
+
 //--- Main Component ---
 const WireframeRenderer: React.FC<WireframeRendererProps> = ({
     title,
@@ -78,8 +111,11 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
         isLoading: false
     });
 
-
-
+    const [showColorPicker, setShowColorPicker] = useState(false);
+    const [currentAccentHSL, setCurrentAccentHSL] = useState<{ h: number; s: number; l: number }>(
+        getAccentHSLFromHtml(htmlContent) 
+    );
+    const colorPickerContainerRef = useRef<HTMLDivElement>(null);
 
 
 
@@ -91,6 +127,20 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
         }
     }, [initialWidth]);
 
+    // --- Update accent color if HTML content changes ---
+    useEffect(() => {
+        const initialHSL = getAccentHSLFromHtml(htmlContent);
+        const tolerance = 0.001; 
+        if (
+          initialHSL.h !== currentAccentHSL.h || 
+          Math.abs(initialHSL.s - currentAccentHSL.s) > tolerance || 
+          Math.abs(initialHSL.l - currentAccentHSL.l) > tolerance
+        ) {
+          setCurrentAccentHSL(initialHSL);
+        }
+      }, [htmlContent]);
+
+
     // --- Selection Callbacks ---
     const handleSectionSelect = useCallback((sectionId: string | null) => {
         setSelectedSectionId(prevId => prevId === sectionId ? null : sectionId);
@@ -101,7 +151,7 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
         setSelectedContentElement(prevEl => prevEl === element ? null : element);
         setSelectedSectionId(null);
     }, []);
-
+    
     // --- Action Callbacks for Hooks ---
     const handleSectionAction = useCallback((sectionInfo: SectionInfo, actionType: 'regenerate-section') => {
         onSectionActionRequest?.(sectionInfo, actionType);
@@ -119,12 +169,15 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
     };
 
 
+
+    // --- Regenerate Design Submit Handler ---
     const handleRegenerateDesignSubmit = async (prompt: string) => {
         if (!prompt.trim()) return;
 
         try {
             setRegenerateDesignDialog(prev => ({ ...prev, isLoading: true }));
             setIsLoading(true);
+            setShowColorPicker(false);
 
             const response = await ApiService.regenerateDesign(prompt, htmlContent);
 
@@ -148,9 +201,11 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
         }
     };
 
+    // --- Close Dialog Handler ---
     const handleCloseRegenerateDesignDialog = () => {
         setRegenerateDesignDialog({ isOpen: false, isLoading: false });
     };
+
 
 
     // --- Instantiate Hooks ---
@@ -172,6 +227,46 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
         onContentSelect: handleContentSelect,
         isContentHighlightActive: currentMode === 'content'
     });
+
+
+    // --- Color Change Handler ---
+    const handleColorChangeFromPicker = useCallback((hsl: { h: number; s: number; l: number }) => {
+        setCurrentAccentHSL(hsl);
+      
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlContent, 'text/html');
+          const styleElement = doc.getElementById('novakit-base-styles');
+      
+          if (!styleElement || !styleElement.textContent) {
+            console.error("Style tag with id 'novakit-base-styles' not found in HTML.");
+            return;
+          }
+      
+          let cssText = styleElement.textContent;
+      
+          cssText = cssText.replace(/(--accentH:\s*)\d+;/g, `$1${Math.round(hsl.h)};`);
+          cssText = cssText.replace(/(--accentS:\s*)\d+%?;/g, `$1${Math.round(hsl.s * 100)}%;`);
+          cssText = cssText.replace(/(--accentL:\s*)\d+%?;/g, `$1${Math.round(hsl.l * 100)}%;`);
+      
+          styleElement.textContent = cssText;
+      
+          const updatedHtmlString = `<!DOCTYPE html>\n${doc.documentElement.outerHTML}`;
+          onHtmlContentChange(updatedHtmlString);
+      
+        } catch (error) {
+          console.error("Error updating accent color in HTML:", error);
+        }
+      }, [htmlContent, onHtmlContentChange]);
+      
+      // --- Toggle Color Picker ---
+      const toggleColorPicker = () => {
+        setShowColorPicker(!showColorPicker);
+        setCurrentMode('none');
+        setSelectedSectionId(null);
+        setSelectedContentElement(null);
+      };
+
 
     // --- Apply Font Function ---
     const applyFont = useCallback(() => {
@@ -207,6 +302,7 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
         let isMounted = true;
         setSelectedSectionId(null);
         setSelectedContentElement(null);
+        setShowColorPicker(false); 
         const handleLoad = () => {
             if (!isMounted || !iframe) return;
             requestAnimationFrame(() => {
@@ -225,7 +321,7 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
                         // *** ADD Data Attributes for Content Selection ***
                         let contentCounter = 0;
                         body.querySelectorAll('p, h1, h2, h3, h4, h5, h6, span, a, button, li, img, strong, em, blockquote').forEach(el => {
-                            if (el instanceof HTMLElement && !el.closest('script') && !el.closest('style')) {
+                            if (el instanceof HTMLElement && !el.closest('script') && !el.closest('style') && !el.closest('#novakit-base-styles')) {
                                 if (!el.dataset.contentId) {
                                     el.dataset.contentId = `content-${Date.now()}-${contentCounter++}`;
                                 }
@@ -315,12 +411,35 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
         }
     }, [selectedSectionId, selectedContentElement, currentMode, isLoading, htmlContent]);
 
+
+
+    useEffect(() => {
+        const handleCanvasClick = () => {
+            if (showColorPicker) {
+                setShowColorPicker(false);
+            }
+        };
+        const canvasEl = canvasContentRef.current;
+        if (canvasEl) {
+             canvasEl.addEventListener('click', handleCanvasClick, true);
+        }
+        return () => {
+            if (canvasEl) {
+                 canvasEl.removeEventListener('click', handleCanvasClick, true);
+            }
+        };
+    }, [showColorPicker, canvasContentRef]);
+
+
+
+
     // --- Mode Toggling Logic ---
     const toggleMode = (modeToSet: InteractionMode) => {
         setCurrentMode(prevMode => {
             const nextMode = prevMode === modeToSet ? 'none' : modeToSet;
             setSelectedSectionId(null);
             setSelectedContentElement(null);
+            setShowColorPicker(false);
             return nextMode;
         });
     };
@@ -345,6 +464,7 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
                         <Grab size={16} className="text-gray-400 cursor-grab flex-shrink-0" />
                         <p className="text-sm font-medium text-gray-700 truncate" title={title}>{title}</p>
                     </div>
+                    
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                         <ToolbarButton icon={Target} label="Section" tooltip={currentMode === 'section' ? "Disable Section Actions" : "Enable Section Actions"} onClick={() => toggleMode('section')} active={currentMode === 'section'} />
                         <ToolbarButton icon={Edit3} label="Content" tooltip={currentMode === 'content' ? "Disable Content Actions" : "Enable Content Actions"} onClick={() => toggleMode('content')} active={currentMode === 'content'} />
@@ -354,6 +474,22 @@ const WireframeRenderer: React.FC<WireframeRendererProps> = ({
                             tooltip="Regenerate Design"
                             onClick={handleRegenerateDesignClick}
                         />
+
+                        <div className="relative" ref={colorPickerContainerRef}>
+                        <ToolbarButton
+                            icon={Palette}
+                            tooltip="Change Accent Color"
+                            onClick={toggleColorPicker} 
+                            active={showColorPicker}
+                        />
+                        
+                        <ColorPicker
+                            initialColor={hslToHex(currentAccentHSL.h, currentAccentHSL.s, currentAccentHSL.l)}
+                            onColorChange={handleColorChangeFromPicker}
+                            isOpen={showColorPicker}
+                            onClose={() => setShowColorPicker(false)}
+                        />
+                        </div>
 
                         <FontSelector
                             selectedFont={selectedFont}

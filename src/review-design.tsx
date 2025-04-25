@@ -6,7 +6,6 @@ import { API_BASE_URL } from "./services/api";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-
 const DesignReview = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [userPrompt, setUserPrompt] = useState<string>(""); 
@@ -14,14 +13,13 @@ const DesignReview = () => {
   const [isReviewing, setIsReviewing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       if (e.target.files[0].type.startsWith('image/')) {
         setSelectedFile(e.target.files[0]);
         setReviewText("");
         setError(null); 
-        // setUserPrompt(""); // Optional: Clear user prompt on new file selection? Decide based on desired UX.
+        // setUserPrompt("");
       } else {
         setError("Please select an image file (png, jpg, gif, webp, etc.).")
         setSelectedFile(null);
@@ -40,7 +38,7 @@ const DesignReview = () => {
         setSelectedFile(e.dataTransfer.files[0]);
         setReviewText("");
         setError(null);
-        // setUserPrompt(""); // Optional: Clear user prompt on new file drop?
+        // setUserPrompt("");
       } else {
         setError("Please drop an image file (png, jpg, gif, webp, etc.).")
         setSelectedFile(null);
@@ -57,29 +55,20 @@ const DesignReview = () => {
       setError('Please select an image file first.');
       return;
     }
-
     setReviewText('');
     setIsReviewing(true);
     setError(null);
 
     try {
-      
       const base64String = await fileToBase64(selectedFile);
-
       const finalPrompt = userPrompt.trim()
         ? userPrompt.trim() 
         : "Provide a general UX/UI design review based on standard heuristics.";
-
-      // 3. Get the mime type
     //   const mimeType = selectedFile.type;
-
-      
       const payload = {
         prompt: finalPrompt,
         base64str: base64String, 
       };
-
-      // 5. Make the API call using fetch for streaming
       const response = await fetch(`${API_BASE_URL}/review-design/generate-review`, {
         method: 'POST',
         headers: {
@@ -87,7 +76,6 @@ const DesignReview = () => {
         },
         body: JSON.stringify(payload),
       });
-
       if (!response.ok) {
           let errorBody = `HTTP error! status: ${response.status}`;
           try {
@@ -98,12 +86,10 @@ const DesignReview = () => {
           }
           throw new Error(errorBody);
       }
-
       const reader = response.body?.getReader();
       if (!reader) {
         throw new Error('Failed to get readable stream from response.');
       }
-
       const decoder = new TextDecoder();
       while (true) {
         const { done, value } = await reader.read();
@@ -124,6 +110,7 @@ const DesignReview = () => {
     }
   }, [selectedFile, userPrompt]);
 
+
   return (
     <div className="flex flex-row w-full h-screen bg-slate-50 overflow-hidden">
       {/* Left side - Form */}
@@ -132,12 +119,6 @@ const DesignReview = () => {
           <div className="flex items-center mb-6">
             <h1 className="text-2xl font-bold text-gray-800">Design Review</h1>
           </div>
-
-          <p className="text-gray-600 mb-10">
-            Enhance your designs, spark creativity with fresh ideas,
-            and sharpen your UX skills with AI-based design reviews.
-          </p>
-
           {/* --- File Upload Area --- */}
           <div className="mb-6"> 
             <p className="text-gray-700 font-medium mb-2">1. Upload your design</p>
@@ -171,7 +152,6 @@ const DesignReview = () => {
               />
             </div>
           </div>
-
           {/* --- Optional Prompt Input --- */}
           <div className="mb-8">
             <label htmlFor="user-prompt" className="block text-gray-700 font-medium mb-2">
@@ -189,7 +169,6 @@ const DesignReview = () => {
             <p className="text-xs text-gray-500 mt-1">Provide specific focus areas or questions for the AI.</p>
           </div>
         </div>
-
         {/* --- Submit Button --- */}
         <Button
           onClick={startReview}
@@ -212,7 +191,6 @@ const DesignReview = () => {
             <p className="mt-3 text-sm text-red-600 text-center">{error}</p>
         )}
       </div>
-
       {/* Right side - Response Area */}
       <div className="w-2/3 p-8 bg-white flex flex-col h-full">
         <h2 className="text-xl font-semibold mb-4 text-gray-700">AI Review Output</h2>

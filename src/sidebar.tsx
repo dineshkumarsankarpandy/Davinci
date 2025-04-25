@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Send, AlertTriangle, Loader2, X, Trash2, Image as ImageIcon, WandSparkles, Expand, Smartphone, Monitor, Tablet } from 'lucide-react';
+import { Send, AlertTriangle, Loader2, X, Image as ImageIcon, WandSparkles, Expand, Smartphone, Monitor, Tablet } from 'lucide-react';
 import ApiService from './services/apiService';
 import { getErrorMessage } from './lib/errorHandling';
 import { Button } from '@/components/ui/button';

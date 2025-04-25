@@ -2,7 +2,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { ReactInfiniteCanvas, ReactInfiniteCanvasHandle } from 'react-infinite-canvas';
 import toast from 'react-hot-toast';
-import { useParams, useLocation, useNavigate,useBlocker} from 'react-router-dom';
+import { useParams, useLocation, useNavigate, useBlocker } from 'react-router-dom';
 
 import SideNavbar from '../sidebar';
 import WebsiteDisplay from './websiteDisplay';
@@ -26,7 +26,7 @@ import {
   // ScreenVersionRead,
   CanvasSaveRequest,
   GroupSaveData,
-  PositionData ,
+  PositionData,
   ScreenSaveData,
   ScreenVersionSaveData,
   WebsiteSizeData
@@ -46,6 +46,7 @@ const VERTICAL_SPACING = 3000;
 const HORIZONTAL_PLACEMENT_X = 100;
 const HORIZONTAL_GROUP_SPACING = 80;
 const HORIZONTAL_VERSION_SPACING = 200;
+
 
 const CanvasApp: React.FC = () => {
 
@@ -69,8 +70,7 @@ const CanvasApp: React.FC = () => {
   const [websiteSizes, setWebsiteSizes] = useState<Record<string, { width: number, height: number }>>({});
   // const groupBoundsRef = useRef<Record<string, GroupBounds>>({});
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
-  const [projectName, setProjectName] = useState<string>(''); 
-
+  const [projectName, setProjectName] = useState<string>('');
   const [regenerateModal, setRegenerateModal] = useState<RegenerateModalState>({
     isOpen: false, websiteId: null, sectionInfo: null
   });
@@ -81,14 +81,12 @@ const CanvasApp: React.FC = () => {
     isOpen: false, websiteId: null, contentInfo: null
   });
   const [editContentValue, setEditContentValue] = useState('');
-
   const [groupNameMap, setGroupNameMap] = useState<Record<string, string>>({});
   const [groupDbIdMap, setGroupDbIdMap] = useState<Record<string, number>>({});
   const [screenDbIdMap, setScreenDbIdMap] = useState<Record<string, number>>({});
-
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
-  useNavigationBlocker(hasUnsavedChanges);
 
+  useNavigationBlocker(hasUnsavedChanges);
   // --- Navigation Blocker ---
   function useNavigationBlocker(when: boolean) {
     const blocker = useBlocker(when);
@@ -104,7 +102,7 @@ const CanvasApp: React.FC = () => {
   }
 
 
-
+  // --- Handlers ---
   useEffect(() => {
     setGeneratedWebsites([]);
     setWebsiteSizes({});
@@ -152,27 +150,20 @@ const CanvasApp: React.FC = () => {
         const loadedGroupDbIdMap: Record<string, number> = {};
         const loadedScreenDbIdMap: Record<string, number> = {};
 
-        let currentMaxY = 100; // Initial vertical position for the first group
-
-        // --- Sort groups by their saved vertical position to maintain relative order ---
+        let currentMaxY = 100;
         const sortedGroups = [...response.groups].sort((a, b) => {
-            const yA = a.metadata?.position?.y ?? Infinity;
-            const yB = b.metadata?.position?.y ?? Infinity;
-            return yA - yB;
+          const yA = a.metadata?.position?.y ?? Infinity;
+          const yB = b.metadata?.position?.y ?? Infinity;
+          return yA - yB;
         });
-        // --------------------------------------------------------------------------
-
-
-        // --- Process groups sequentially, calculating non-overlapping Y positions ---
         sortedGroups.forEach(group => {
           const groupFrontendId = group.metadata?.frontendId ?? `db-group-${group.id}`;
           if (group.name) {
             groupNames[groupFrontendId] = group.name;
-            loadedGroupDbIdMap[groupFrontendId] = group.id; // Store the DB ID for later use
+            loadedGroupDbIdMap[groupFrontendId] = group.id;
           }
           const groupStartY = currentMaxY;
-          const groupHeight = group.metadata?.size?.height ?? DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT; // Fallback height
-
+          const groupHeight = group.metadata?.size?.height ?? DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT;
 
           // --- Process Screens within this Group ---
           group.screens.forEach(screen => {
@@ -191,88 +182,69 @@ const CanvasApp: React.FC = () => {
               const versionedTitle = version.version_number === 1 || version.version_number === 0
                 ? baseTitle
                 : `${baseTitle} (v${version.version_number})`;
-                loadedScreenDbIdMap[versionFrontendId] = screenDbId;
+              loadedScreenDbIdMap[versionFrontendId] = screenDbId;
 
               const website: WebsiteData = {
                 id: versionFrontendId,
                 title: versionedTitle,
                 htmlContent: version.html_content || '<p>No content loaded</p>',
-                // ** Apply the calculated groupStartY for vertical position **
                 position: { x: screenPositionX, y: groupStartY },
-                // Use saved/default size
                 width: size.width,
                 height: size.height,
                 groupId: groupFrontendId,
                 pageName: pageName,
               };
               loadedWebsites.push(website);
-              // Store the actual size for potential use (e.g., by WebsiteDisplay/Group)
               loadedSizes[versionFrontendId] = { width: size.width, height: size.height };
-            }); // End versions loop
-          }); // End screens loop
-
-
-          // --- Update currentMaxY for the next group ---
-          // Use the saved group height for accurate spacing
+            });
+          });
           currentMaxY = groupStartY + groupHeight + VERTICAL_SPACING;
-
-        }); 
+        });
 
         const baseIdToVersions: Record<string, WebsiteData[]> = {};
         loadedWebsites.forEach(website => {
-            const match = website.id.match(/^(.*?)(?:-v\d+)?$/);
-            if (match && match[1]) { // Ensure match[1] exists
-                const baseId = match[1]; // ID without the version suffix
-                const originalScreen = loadedWebsites.find(w =>
-                     w.id === baseId && // Matches the base part
-                     (w.groupId === website.groupId) && // Belongs to the same conceptual group
-                     parse_title_and_version(w.title)[1] === null // Is the actual base version (no vX)
-                );
-                const effectiveBaseId = originalScreen ? originalScreen.id : baseId; // Use original ID if found
-
-                if (!baseIdToVersions[effectiveBaseId]) {
-                    baseIdToVersions[effectiveBaseId] = [];
-                }
-                baseIdToVersions[effectiveBaseId].push(website);
-            } else {
-                if (!baseIdToVersions[website.id]) {
-                     baseIdToVersions[website.id] = [website];
-                }
+          const match = website.id.match(/^(.*?)(?:-v\d+)?$/);
+          if (match && match[1]) {
+            const baseId = match[1];
+            const originalScreen = loadedWebsites.find(w =>
+              w.id === baseId &&
+              (w.groupId === website.groupId) &&
+              parse_title_and_version(w.title)[1] === null
+            );
+            const effectiveBaseId = originalScreen ? originalScreen.id : baseId;
+            if (!baseIdToVersions[effectiveBaseId]) {
+              baseIdToVersions[effectiveBaseId] = [];
             }
+            baseIdToVersions[effectiveBaseId].push(website);
+          } else {
+            if (!baseIdToVersions[website.id]) {
+              baseIdToVersions[website.id] = [website];
+            }
+          }
         });
 
 
         Object.entries(baseIdToVersions).forEach(([baseId, versions]) => {
           if (versions.length > 1) {
-            // Sort versions: base (v0/v1) first, then numerically
             versions.sort((a, b) => {
-              const versionA = parse_title_and_version(a.title)[1] ?? 0; // Treat base as 0 if no version num
-              const versionB = parse_title_and_version(b.title)[1] ?? 0; // Treat base as 0
+              const versionA = parse_title_and_version(a.title)[1] ?? 0;
+              const versionB = parse_title_and_version(b.title)[1] ?? 0;
               return versionA - versionB;
             });
-
-            // Find the actual base website object in the sorted list (should be the first)
             const baseWebsite = versions[0];
             if (!baseWebsite) return;
 
-            const baseX = baseWebsite.position.x; // Use the X position already set
-            const baseY = baseWebsite.position.y; // Use the Y position calculated in the groups loop
+            const baseX = baseWebsite.position.x;
+            const baseY = baseWebsite.position.y;
             const websiteWidth = loadedSizes[baseWebsite.id]?.width || baseWebsite.width || DEFAULT_WEBSITE_WIDTH;
-
-            // Adjust X position for subsequent versions
             versions.forEach((version, index) => {
-              // Base version (index 0) keeps its position
               if (index > 0) {
                 version.position.x = baseX + index * (websiteWidth + HORIZONTAL_VERSION_SPACING);
               }
-               // Ensure Y position is consistent for all versions (already set from groupStartY)
               version.position.y = baseY;
             });
           }
         });
-        // --- End Version Horizontal Adjustment ---
-
-
         setGeneratedWebsites(loadedWebsites);
         setWebsiteSizes(loadedSizes);
         setGroupNameMap(groupNames);
@@ -280,20 +252,20 @@ const CanvasApp: React.FC = () => {
         setScreenDbIdMap(loadedScreenDbIdMap);
 
       } catch (err: any) {
-         console.error("Error loading canvas state:", err);
-         const message = getErrorMessage(err);
-         setError(`Failed to load project: ${message}`);
-         toast.error(`Failed to load project: ${message}`);
+        console.error("Error loading canvas state:", err);
+        const message = getErrorMessage(err);
+        setError(`Failed to load project: ${message}`);
+        toast.error(`Failed to load project: ${message}`);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadData();
-  }, [projectId, isNewProject, navigate]); // Dependencies remain the same
+  }, [projectId, isNewProject, navigate]);
 
 
-
+  //--groupedWebsites and getWebsiteGroupId--
   const groupedWebsites = useCallback(() => {
     const explicitGroups: Record<string, WebsiteData[]> = {};
     const versionGroups: Record<string, WebsiteData[]> = {};
@@ -305,10 +277,8 @@ const CanvasApp: React.FC = () => {
         explicitGroups[website.groupId].push(website);
       }
     });
-
     generatedWebsites.forEach(website => {
       if (website.groupId) return;
-
       const versionMatch = website.title.match(/\(v(\d+)\)$/);
       if (versionMatch) {
         const baseTitle = website.title.replace(/\s\(v\d+\)$/, '');
@@ -318,7 +288,6 @@ const CanvasApp: React.FC = () => {
           w.title === baseTitle &&
           !w.title.match(/\(v\d+\)$/)
         );
-
         if (original) {
           const versionGroupId = `version-group-${original.id}`;
           if (!versionGroups[versionGroupId]) versionGroups[versionGroupId] = [original];
@@ -341,13 +310,11 @@ const CanvasApp: React.FC = () => {
 
     const combinedGroups = { ...explicitGroups, ...versionGroups };
     Object.values(combinedGroups).forEach(group => group.sort((a, b) => a.id.localeCompare(b.id)));
-
     return { grouped: combinedGroups, ungrouped };
   }, [generatedWebsites]);
 
   const getWebsiteGroupId = useCallback((website: WebsiteData): string | null => {
     if (website.groupId) return website.groupId;
-
     const versionMatch = website.title.match(/\(v(\d+)\)$/);
     if (versionMatch) {
       const baseTitle = website.title.replace(/\s\(v\d+\)$/, '');
@@ -356,7 +323,6 @@ const CanvasApp: React.FC = () => {
       );
       if (original) return `version-group-${original.id}`;
     }
-
     if (!website.groupId && !versionMatch) {
       const hasVersions = generatedWebsites.some(w =>
         !w.groupId &&
@@ -369,8 +335,8 @@ const CanvasApp: React.FC = () => {
     return null;
   }, [generatedWebsites]);
 
-  
 
+  //--- website size change handler ---
   const handleWebsiteSizeChange = useCallback((websiteId: string, width: number, height: number) => {
     setWebsiteSizes(prev => {
       const currentSize = prev[websiteId];
@@ -381,7 +347,7 @@ const CanvasApp: React.FC = () => {
     });
   }, []);
 
-  // --- Main Actions ---
+  // --- handling generate screeens ---
   const handleGenerateWebsite = async (prompt: string, pages: string[], base64Image: string | null = null) => {
     if (!prompt.trim() && !base64Image || isLoading) return;
     setIsLoading(true);
@@ -397,7 +363,7 @@ const CanvasApp: React.FC = () => {
         maxY = Math.max(maxY, bottomEdge);
       });
       const newY = generatedWebsites.length > 0 ? maxY + VERTICAL_SPACING : 100;
-
+      //--- if it was an image from prompt ---
       if (base64Image) {
         const data = await ApiService.generateHtmlFromImage(prompt, base64Image);
         const newGroupId = `IMAGE-${Date.now()}`;
@@ -415,11 +381,11 @@ const CanvasApp: React.FC = () => {
         setHasUnsavedChanges(true);
         setActiveWebsiteId(newWebsite.id);
       }
+      //--- if it was only a prompt ---
       else if (pages.length === 0) {
         console.log("Generating single page...");
         const data = await ApiService.generateWebsite(prompt);
         const newGroupId = `GROUP-${Date.now()}`;
-
         const newWebsite: WebsiteData = {
           id: `web-${Date.now()}`,
           title: prompt.substring(0, 10) + (prompt.length > 10 ? '...' : ''),
@@ -434,19 +400,18 @@ const CanvasApp: React.FC = () => {
         setHasUnsavedChanges(true);
         setActiveWebsiteId(newWebsite.id);
         console.log("Single page generated:", newWebsite.id);
-      } else {
+      }
+      //--- if it was a multi-page generation --- 
+      else {
         console.log(`Generating multiple pages (${pages.length})...`);
         const allPageNames = pages;
         const htmlPages = await ApiService.generateMultipleWebsites(prompt, allPageNames);
-
         if (htmlPages.html_pages.length !== allPageNames.length) {
           throw new Error(`API returned ${htmlPages.html_pages.length} pages, but ${allPageNames.length} were requested.`);
         }
-
         const newGroupId = `flow-${Date.now()}`;
         const newWebsites: WebsiteData[] = [];
         let currentX = HORIZONTAL_PLACEMENT_X;
-
         allPageNames.forEach((pageName, index) => {
           const pageHtml = htmlPages.html_pages[index];
           const websiteId = `web-${newGroupId}-${index}`;
@@ -463,7 +428,6 @@ const CanvasApp: React.FC = () => {
           newWebsites.push(newWebsite);
           currentX += (DEFAULT_WEBSITE_WIDTH + HORIZONTAL_GROUP_SPACING);
         });
-
         setGeneratedWebsites(prev => [...prev, ...newWebsites]);
         setActiveGroupId(newGroupId);
         setHasUnsavedChanges(true);
@@ -476,49 +440,6 @@ const CanvasApp: React.FC = () => {
       setIsLoading(false);
     }
   };
-
-
- 
-  
-  // const handleDeleteScreen = (id: string) => {
-  //   const websiteToDelete = generatedWebsites.find(w => w.id === id);
-  //   if (!websiteToDelete) return;
-
-  //   const groupId = websiteToDelete.groupId;
-  //   const isVersion = websiteToDelete.title.match(/\(v\d+\)$/);
-  //   let associatedIdsToDelete: string[] = [id];
-
-  //   if (!isVersion && !groupId) {
-  //     const versionGroupId = `version-group-${id}`;
-  //     generatedWebsites.forEach(w => {
-  //       if (getWebsiteGroupId(w) === versionGroupId) {
-  //         associatedIdsToDelete.push(w.id);
-  //       }
-  //     });
-  //   }
-
-  //   setGeneratedWebsites(prev => prev.filter(w => !associatedIdsToDelete.includes(w.id)));
-
-  //   if (associatedIdsToDelete.includes(activeWebsiteId ?? '')) {
-  //     setActiveWebsiteId(null);
-  //   }
-
-  //   if (groupId && activeGroupId === groupId) {
-  //     const remainingInGroup = generatedWebsites.filter(w => w.groupId === groupId && !associatedIdsToDelete.includes(w.id));
-  //     if (remainingInGroup.length === 0) {
-  //       setActiveGroupId(null);
-  //     }
-  //   }
-  //   const potentialVersionGroupId = isVersion ? getWebsiteGroupId(websiteToDelete) : `version-group-${id}`;
-  //   if (potentialVersionGroupId && activeGroupId === potentialVersionGroupId) {
-  //     const remainingInGroup = generatedWebsites.filter(w =>
-  //       getWebsiteGroupId(w) === potentialVersionGroupId && !associatedIdsToDelete.includes(w.id)
-  //     );
-  //     if (remainingInGroup.length === 0) {
-  //       setActiveGroupId(null);
-  //     }
-  //   }
-  // };
 
   // --- Activation Handlers ---
   const handleSetActiveWebsite = (id: string) => {
@@ -533,7 +454,6 @@ const CanvasApp: React.FC = () => {
       // }
     }
   };
-
   const handleSetActiveGroup = (groupId: string) => {
     if (activeGroupId !== groupId) {
       setActiveGroupId(groupId);
@@ -575,40 +495,30 @@ const CanvasApp: React.FC = () => {
   const closeEditContentModal = () => { setEditContentModal({ isOpen: false, websiteId: null, contentInfo: null }); setEditContentValue(''); };
   const closeAskAIModal = () => setAskAIModal({ isOpen: false, websiteId: null, contentInfo: null });
 
+  //--- regenerate section ---
   const submitRegenerateSection = async (prompt: string) => {
     if (!regenerateModal.websiteId || !regenerateModal.sectionInfo || !prompt) return;
     setIsUpdatingContent(true);
     setError(null);
     const { websiteId, sectionInfo } = regenerateModal;
-
     try {
       const actionedWebsite = generatedWebsites.find(w => w.id === websiteId);
       if (!actionedWebsite) throw new Error("Actioned website not found for regeneration.");
-
       const data = await ApiService.regenerateSection(actionedWebsite.htmlContent, sectionInfo.outerHTML, prompt);
-
       const baseTitle = actionedWebsite.title.replace(/\s\(v\d+\)$/, '');
       const originalGroupId = actionedWebsite.groupId;
       const originalPageName = actionedWebsite.pageName;
-
       const existingVersionsCount = generatedWebsites.filter(w => {
         const versionPattern = new RegExp(`^${baseTitle}\\s*\\(v\\d+\\)$`);
         return versionPattern.test(w.title);
       }).length;
       const nextVersionNumber = existingVersionsCount + 1;
-
-      let newX = actionedWebsite.position.x; 
-      let newY = actionedWebsite.position.y; 
-
+      let newX = actionedWebsite.position.x;
+      let newY = actionedWebsite.position.y;
       if (generatedWebsites.length > 0) {
         const lastWebsite = generatedWebsites[generatedWebsites.length - 1];
-        
-
-
         console.log(`[Regen] Positioning based on last website: ${lastWebsite.id} at position x:${lastWebsite.position.x}`);
       }
-
-      // Create new website version with calculated position
       const newWebsite: WebsiteData = {
         id: `web-${Date.now()}-v${nextVersionNumber}`,
         title: `${baseTitle} (v${nextVersionNumber})`,
@@ -619,14 +529,11 @@ const CanvasApp: React.FC = () => {
         groupId: originalGroupId,
         pageName: originalPageName
       };
-
       console.log(`[Regen] New version positioned at x:${newX}, y:${newY}`);
-
-      // Explicitly add the new website at the end
       const newWebsites = [...generatedWebsites];
       newWebsites.push(newWebsite);
       setGeneratedWebsites(newWebsites);
-      setHasUnsavedChanges(true); 
+      setHasUnsavedChanges(true);
       setActiveWebsiteId(newWebsite.id);
       if (originalGroupId) {
         setActiveGroupId(originalGroupId);
@@ -644,14 +551,13 @@ const CanvasApp: React.FC = () => {
     }
   };
 
-
-
+  //--- edit content ---
   const submitEditContent = (newContent: string) => {
     if (!editContentModal.websiteId || !editContentModal.contentInfo) return;
     setIsUpdatingContent(true);
     setError(null);
     const { websiteId, contentInfo } = editContentModal;
-    const oldOuterHtml = contentInfo.outerHTML; 
+    const oldOuterHtml = contentInfo.outerHTML;
     try {
       setGeneratedWebsites(prev => prev.map(site => {
         if (site.id === websiteId) {
@@ -688,7 +594,7 @@ const CanvasApp: React.FC = () => {
             console.warn("Edit Content: Target element or old HTML fragment not found. Update skipped.");
             setError("Update failed: Content mismatch or element not found.");
           }
-          return site; 
+          return site;
         }
         return site;
       }));
@@ -700,26 +606,21 @@ const CanvasApp: React.FC = () => {
       closeEditContentModal();
     }
   };
-
+  //---editing content with ai ---
   const submitAskAI = async (aiAction: string) => {
     if (!askAIModal.websiteId || !askAIModal.contentInfo?.textContent) return;
     setIsUpdatingContent(true);
     setError(null);
     const { websiteId, contentInfo } = askAIModal;
-    const oldOuterHtml = contentInfo.outerHTML; // Keep for fallback
-
+    const oldOuterHtml = contentInfo.outerHTML;
     try {
       const data = await ApiService.processWithAI(contentInfo.textContent || '', aiAction);
-      if (!data.text) throw new Error("API returned no processed text.");
-
       setGeneratedWebsites(prev => prev.map(site => {
         if (site.id === websiteId) {
           const parser = new DOMParser();
           const siteDoc = parser.parseFromString(site.htmlContent, 'text/html');
-          // Prefer data-content-id
           const contentId = contentInfo.element.dataset.contentId;
           const elementToModify = contentId ? siteDoc.querySelector(`[data-content-id="${contentId}"]`) : null;
-
           let found = false;
           if (elementToModify instanceof HTMLElement) {
             elementToModify.textContent = data.text;
@@ -729,7 +630,6 @@ const CanvasApp: React.FC = () => {
             setHasUnsavedChanges(true);
             return { ...site, htmlContent: finalHtml };
           } else {
-            // Fallback: String replacement
             if (oldOuterHtml && site.htmlContent.includes(oldOuterHtml)) {
               const tempParser = new DOMParser();
               const tempDoc = tempParser.parseFromString(oldOuterHtml, 'text/html');
@@ -739,13 +639,12 @@ const CanvasApp: React.FC = () => {
                 const updatedElementHtml = tempElement.outerHTML;
                 const updatedHtmlString = site.htmlContent.replace(oldOuterHtml, updatedElementHtml);
                 found = true;
-                setHasUnsavedChanges(true); 
+                setHasUnsavedChanges(true);
                 console.warn("AI Update: Used fallback string replacement.");
                 return { ...site, htmlContent: updatedHtmlString };
               }
             }
           }
-
           if (!found) {
             console.warn("AI Update: Target element or old HTML not found. Update skipped.");
             setError("Update failed: Content mismatch or element not found.");
@@ -762,7 +661,6 @@ const CanvasApp: React.FC = () => {
       closeAskAIModal();
     }
   };
-
   const handleWebsiteContentChange = useCallback((websiteId: string, newHtmlContent: string) => {
     setGeneratedWebsites((prevWebsites) =>
       prevWebsites.map((website) =>
@@ -772,99 +670,71 @@ const CanvasApp: React.FC = () => {
     setHasUnsavedChanges(true);
   }, []);
 
-
-
- // src/components/CanvasApp.tsx
-
-// ... other imports ...
-
-
-const handleSaveCanvas = async () => {
+  //-- save canvas state ---  
+  const handleSaveCanvas = async () => {
     if (!projectId) {
-        toast.error("Project ID is missing. Cannot save.");
-        return;
+      toast.error("Project ID is missing. Cannot save.");
+      return;
     }
     if (isSaving) {
-        toast("Already saving...", { icon: '⏳' });
-        return;
+      toast("Already saving...", { icon: '⏳' });
+      return;
     }
     if (generatedWebsites.length === 0 && !isNewProject) {
-       console.warn("Saving empty canvas state for existing project.");
+      console.warn("Saving empty canvas state for existing project.");
       // toast.error("Nothing to save. Generate some content first.");
       // return;
     }
-
     setIsSaving(true);
     setError(null);
     const saveToastId = toast.loading('Saving project...');
-
     try {
       console.log("Preparing canvas state for saving...");
-
       const { grouped: allGroupsMap } = groupedWebsites();
-
       const groupsPayload: GroupSaveData[] = [];
-
       for (const [groupId, websitesInGroup] of Object.entries(allGroupsMap) as [string, WebsiteData[]][]) {
         if (websitesInGroup.length === 0) continue;
-
         const screensPayload: ScreenSaveData[] = [];
         const processedBaseScreenIds = new Set<string>();
-
         // --- Calculate Group Bounds ---
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         let groupPosition: PositionData | null = null; // Use first website's position as anchor
-
         websitesInGroup.forEach((website, index) => {
-            const size = websiteSizes[website.id] ?? {
-                width: website.width ?? DEFAULT_WEBSITE_WIDTH,
-                height: website.height ?? DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT
-            };
-            const posX = website.position.x;
-            const posY = website.position.y;
-            const width = size.width;
-            const height = size.height;
-
-            if (index === 0) {
-                groupPosition = { x: posX, y: posY }; // Anchor position
-            }
-
-            minX = Math.min(minX, posX);
-            minY = Math.min(minY, posY);
-            maxX = Math.max(maxX, posX + width);
-            maxY = Math.max(maxY, posY + height);
+          const size = websiteSizes[website.id] ?? {
+            width: website.width ?? DEFAULT_WEBSITE_WIDTH,
+            height: website.height ?? DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT
+          };
+          const posX = website.position.x;
+          const posY = website.position.y;
+          const width = size.width;
+          const height = size.height;
+          if (index === 0) {
+            groupPosition = { x: posX, y: posY };
+          }
+          minX = Math.min(minX, posX);
+          minY = Math.min(minY, posY);
+          maxX = Math.max(maxX, posX + width);
+          maxY = Math.max(maxY, posY + height);
         });
-
         const groupSize: WebsiteSizeData | null = (minX !== Infinity)
           ? { width: maxX - minX, height: maxY - minY }
           : null;
-        // ------------------------------
-
-        // Use the calculated or first website's position if calculation failed
         const finalGroupPosition = groupPosition ?? (websitesInGroup[0]?.position || { x: 0, y: 0 });
-
-
         let groupName: string | null = null;
         if (groupId.startsWith('flow-')) {
           groupName = `Flow (${groupId.substring(5, 13)}...)`;
         } else if (groupId.startsWith('version-group-')) {
-           const baseWebsite = generatedWebsites.find(w => w.id === groupId.replace('version-group-', ''));
-           groupName = `Versions of '${baseWebsite ? parse_title_and_version(baseWebsite.title)[0] : 'Unknown'}'`;
-        } else if (groupId.startsWith('single-item-group-')){
-           // Maybe derive name from the single item?
-           groupName = `Item: ${websitesInGroup[0]?.title ?? 'Unnamed'}`;
+          const baseWebsite = generatedWebsites.find(w => w.id === groupId.replace('version-group-', ''));
+          groupName = `Versions of '${baseWebsite ? parse_title_and_version(baseWebsite.title)[0] : 'Unknown'}'`;
+        } else if (groupId.startsWith('single-item-group-')) {
+          groupName = `Item: ${websitesInGroup[0]?.title ?? 'Unnamed'}`;
         } else if (websitesInGroup[0]?.groupId === groupId) {
-           // Explicit group created via generation (e.g., image prompt)
-           groupName = groupNameMap[groupId] || `Group: ${groupId.substring(0, 8)}`; // Use stored name or fallback
+          groupName = groupNameMap[groupId] || `Group: ${groupId.substring(0, 8)}`;
         } else {
-           groupName = `Group: ${groupId}`; // Basic fallback
+          groupName = `Group: ${groupId}`;
         }
-
-
         for (const website of websitesInGroup) {
-          // ... (existing screen processing logic remains the same) ...
           const [baseTitle, versionNum] = parse_title_and_version(website.title);
-
           let baseScreenFrontendId: string;
           if (groupId.startsWith('version-group-')) {
             baseScreenFrontendId = groupId.replace('version-group-', '');
@@ -872,98 +742,76 @@ const handleSaveCanvas = async () => {
             const originalInFlow = websitesInGroup.find(w =>
               w.groupId === groupId &&
               w.pageName === website.pageName &&
-              parse_title_and_version(w.title)[1] === null // No version number
+              parse_title_and_version(w.title)[1] === null
             );
-            baseScreenFrontendId = originalInFlow ? originalInFlow.id : website.id; // Fallback to self if base not found
+            baseScreenFrontendId = originalInFlow ? originalInFlow.id : website.id;
           } else {
-            baseScreenFrontendId = website.id; // Base is itself if not a version/flow variant
+            baseScreenFrontendId = website.id;
           }
-
           if (processedBaseScreenIds.has(baseScreenFrontendId)) {
             continue;
           }
-
           const baseWebsiteData = generatedWebsites.find(w => w.id === baseScreenFrontendId);
-
           if (!baseWebsiteData) {
             console.warn(`Could not find base website data for base ID ${baseScreenFrontendId}. Skipping screen.`);
             continue;
           }
-          // --- Find all versions related to this base screen *within this group* ---
           const allVersionsForThisBase: ScreenVersionSaveData[] = websitesInGroup // Filter from *this* group
             .filter(w => {
-               // Determine if 'w' is a version of 'baseWebsiteData' within the context of 'groupId'
               const [wBaseTitle, wVersionNum] = parse_title_and_version(w.title);
-
               if (groupId.startsWith('version-group-')) {
-                 // If it's a version group, any website in this group belongs to the base ID
                 return w.id === baseScreenFrontendId || wVersionNum !== null;
               } else if (groupId.startsWith('flow-')) {
-                 // In a flow, versions must match the pageName and base title
-                 return w.pageName === baseWebsiteData.pageName && wBaseTitle === baseTitle;
+                return w.pageName === baseWebsiteData.pageName && wBaseTitle === baseTitle;
               }
-              // Add logic for other group types if necessary
               else {
-                 // For generic groups or single items, check if the title matches the base title
-                 return wBaseTitle === baseTitle;
+                return wBaseTitle === baseTitle;
               }
             })
             .map(v => ({
-              id: v.id, // Keep frontend ID for potential reference
+              id: v.id,
               title: v.title,
               htmlContent: v.htmlContent,
             }));
-
-           // Sort versions based on the version number derived from the title
-           allVersionsForThisBase.sort((a, b) => {
-               const vA = parse_title_and_version(a.title)[1] ?? 0; // Treat base as version 0
-               const vB = parse_title_and_version(b.title)[1] ?? 0; // Treat base as version 0
-               return vA - vB;
-           });
-          // --- End Finding/Sorting Versions ---
-
+          allVersionsForThisBase.sort((a, b) => {
+            const vA = parse_title_and_version(a.title)[1] ?? 0; // Treat base as version 0
+            const vB = parse_title_and_version(b.title)[1] ?? 0; // Treat base as version 0
+            return vA - vB;
+          });
 
           // --- Create Screen Payload ---
           const baseScreenSize = websiteSizes[baseScreenFrontendId] ?? { width: baseWebsiteData.width ?? DEFAULT_WEBSITE_WIDTH, height: baseWebsiteData.height ?? DEFAULT_WEBSITE_HEIGHT_FOR_PLACEMENT };
           const screenData: ScreenSaveData = {
             baseFrontendId: baseScreenFrontendId,
-            title: baseTitle, // Use the parsed base title
+            title: baseTitle,
             position: { x: baseWebsiteData.position.x, y: baseWebsiteData.position.y },
             width: baseScreenSize.width,
             height: baseScreenSize.height,
             pageName: baseWebsiteData.pageName,
-            versions: allVersionsForThisBase, // Use the correctly filtered and sorted versions
+            versions: allVersionsForThisBase,
           };
-
           screensPayload.push(screenData);
           processedBaseScreenIds.add(baseScreenFrontendId);
-        } // End loop through websites in group
-
-
+        }
         // --- Create Group Payload ---
         if (screensPayload.length > 0) {
           groupsPayload.push({
             frontendId: groupId,
-            name: groupName, // Use the derived group name
-            position: finalGroupPosition, // Use the calculated anchor position
-            size: groupSize,          // <--- ADDED CALCULATED SIZE
+            name: groupName,
+            position: finalGroupPosition,
+            size: groupSize,
             screens: screensPayload,
           });
         }
-      } // End loop through groups
-
+      }
       const payload: CanvasSaveRequest = {
         groups: groupsPayload,
       };
-
       console.log("Saving payload:", JSON.stringify(payload, null, 2));
-
       // --- API Call ---
       const response = await ApiService.saveCanvasState(projectId, payload);
       console.log("Save response:", response);
       const newScreenDbIdMap = { ...screenDbIdMap };
-     
-
       const newGroupDbIdMap = { ...groupDbIdMap };
       if (response?.groups) {
         response.groups.forEach(group => {
@@ -977,12 +825,9 @@ const handleSaveCanvas = async () => {
           });
         });
       }
-    setGroupDbIdMap(newGroupDbIdMap);
+      setGroupDbIdMap(newGroupDbIdMap);
       toast.success('Project saved successfully!', { id: saveToastId });
       setHasUnsavedChanges(false);
-
-    
-
     } catch (err: any) {
       console.error("Save Error:", err);
       const errorMsg = getErrorMessage(err);
@@ -993,8 +838,7 @@ const handleSaveCanvas = async () => {
     }
   };
 
-
-// Warn on tab/browser close
+  // Warn on tab/browser close
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
@@ -1006,16 +850,14 @@ const handleSaveCanvas = async () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-
-
-// DELETING THE GROUP.
+  // DELETING THE GROUP.
   const handleDeleteGroup = async (groupId: string) => {
     try {
       const dbGroupId = groupDbIdMap[groupId];
       if (dbGroupId) {
         await ApiService.deleteGroup(dbGroupId);
       }
-      setGeneratedWebsites(prev => prev.filter(w => 
+      setGeneratedWebsites(prev => prev.filter(w =>
         !(w.groupId === groupId || getWebsiteGroupId(w) === groupId)
       ));
       setGroupDbIdMap(prev => {
@@ -1033,23 +875,18 @@ const handleSaveCanvas = async () => {
     }
   };
 
-
-// Deletting the screen.
+  // Deletting the screen.
   const handleDeleteScreen = async (id: string) => {
     const websiteToDelete = generatedWebsites.find(w => w.id === id);
     if (!websiteToDelete) return;
-  
     const screenDbId = screenDbIdMap[id];
-
     const groupId = websiteToDelete.groupId;
     const toastId = toast.loading('Deleting screen...');
     try {
       if (screenDbId) {
-        await ApiService.deleteScreen(screenDbId); 
+        await ApiService.deleteScreen(screenDbId);
       }
-  
       setGeneratedWebsites(prev => prev.filter(w => w.id !== id));
-  
       if (activeWebsiteId === id) {
         setActiveWebsiteId(null);
       }
@@ -1061,55 +898,42 @@ const handleSaveCanvas = async () => {
           setActiveGroupId(null);
         }
       }
-
       toast.success("Screen deleted successfully!", { id: toastId });
-  
     } catch (err: any) {
       console.error('Delete screen error:', err);
       toast.error(`Failed to delete screen: ${getErrorMessage(err)}`);
     }
   };
-  
-
 
   //handling logout.
-
   const handleLogout = () => {
     localStorage.clear();
     toast.success("Logged out successfully.");
     navigate("/");
   };
 
-
-
-  // --- Render ---
   const { grouped, ungrouped } = groupedWebsites();
-
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
-             {isSidebarOpen && (
-      <SideNavbar onGenerate={handleGenerateWebsite} isLoading={isLoading && !isUpdatingContent} error={error} onClose={() => setIsSidebarOpen(false)} />
-             )}
+      {isSidebarOpen && (
+        <SideNavbar onGenerate={handleGenerateWebsite} isLoading={isLoading && !isUpdatingContent} error={error} onClose={() => setIsSidebarOpen(false)} />
+      )}
       <main className="flex-grow relative overflow-hidden">
-
-      <TopBar
-              projectName={projectName}
-              isSidebarOpen={isSidebarOpen}
-              toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-              onSave={handleSaveCanvas}
-              isSaving={isSaving}
-              canSave={!isLoading && !isSaving}
-           />
-
-        
-          <button
-            onClick={handleLogout}
-            title='Logout'
-            className="absolute top-4 right-4 z-50 flex items-center gap-2 p-2 bg-white text-black rounded-lg shadow hover:bg-gray-200 transition"
-          >
-            <LogOut size={18} />
-          </button>
-
+        <TopBar
+          projectName={projectName}
+          isSidebarOpen={isSidebarOpen}
+          toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          onSave={handleSaveCanvas}
+          isSaving={isSaving}
+          canSave={!isLoading && !isSaving}
+        />
+        <button
+          onClick={handleLogout}
+          title='Logout'
+          className="absolute top-4 right-4 z-50 flex items-center gap-2 p-2 bg-white text-black rounded-lg shadow hover:bg-gray-200 transition"
+        >
+          <LogOut size={18} />
+        </button>
         <ReactInfiniteCanvas
           ref={canvasRef}
           minZoom={0} maxZoom={4}
@@ -1122,10 +946,8 @@ const handleSaveCanvas = async () => {
             minSize: "15px",
           }}
           // panOnScroll
-
           className="w-full h-full"
-          backgroundConfig={{ disable: true }} // Disable default background
-        // No 'elements' prop needed
+          backgroundConfig={{ disable: true }}
         >
           {/* <EventBlocker shouldBlockZoom={true}> */}
           <div className="canvas-content" ref={canvasContentRef} style={{ position: 'relative' }}>
@@ -1137,7 +959,6 @@ const handleSaveCanvas = async () => {
                 isActive={activeWebsiteId === website.id && !activeGroupId}
                 onActivate={handleSetActiveWebsite}
                 onDelete={handleDeleteScreen}
-                // Pass handlers with correct signature
                 onSectionAction={handleSectionActionRequest}
                 onContentAction={handleContentActionRequest}
                 canvasTransform={canvasTransform}
@@ -1147,8 +968,6 @@ const handleSaveCanvas = async () => {
                 onUpdateHtmlContent={handleWebsiteContentChange}
               />
             ))}
-
-            {/* Render grouped websites (Flows and Versions) */}
             {Object.entries(grouped).map(([groupId, websitesInGroup]) => (
               <WebsiteGroup
                 key={groupId}
@@ -1168,16 +987,16 @@ const handleSaveCanvas = async () => {
                 initialWebsiteSizes={websiteSizes}
                 onUpdateHtmlContent={handleWebsiteContentChange}
                 onDeleteGroup={handleDeleteGroup}
-               
+
               />
             ))}
           </div>
           {/* </EventBlocker> */}
         </ReactInfiniteCanvas>
         <BottomBar
-                canvasRef={canvasRef}
-                currentZoom={canvasTransform.k} // Pass the current zoom level 'k'
-            />
+          canvasRef={canvasRef}
+          currentZoom={canvasTransform.k} 
+        />
         <LoadingOverlay isLoading={isLoading && !isUpdatingContent} isUpdating={isUpdatingContent} progress={75} />
         {error && (
           <div className="absolute bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-md z-50 max-w-sm">
